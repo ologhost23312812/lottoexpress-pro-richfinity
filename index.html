@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการยอดหวย - Google Sheets Real-time Sync ถาวร</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS (xlsx) for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Google Font Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- LOGIN OVERLAY MODAL -->
+    <div id="loginModal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-200 transform transition-all">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl mb-3 shadow-inner">
+                    <i class="fa-solid fa-lock text-2xl"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800">เข้าสู่ระบบคีย์หวย</h2>
+                <p class="text-xs text-slate-500 mt-1">กรุณากรอกรหัสผ่านเพื่อเข้าใช้งานระบบซิงค์แบบเรียลไทม์</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">ชื่อผู้ใช้งาน (Username)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" id="loginUsername" required placeholder="กรอกชื่อผู้ใช้งาน" class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wider">รหัสผ่าน (Password)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-key"></i>
+                        </span>
+                        <input type="password" id="loginPassword" required placeholder="กรอกรหัสผ่าน" class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                    </div>
+                </div>
+
+                <div id="loginErrorMsg" class="hidden text-xs text-rose-600 font-medium text-center bg-rose-50 p-2 rounded-lg border border-rose-100">
+                    ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง!
+                </div>
+
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 text-sm mt-2">
+                    <i class="fa-solid fa-arrow-right-to-bracket"></i> เข้าสู่ระบบ
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-file-excel text-2xl text-emerald-400"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">ระบบบริหารจัดการยอดหวย (Google Sheets Sync ถาวร)</h1>
+                    <div class="flex items-center gap-2 text-xs text-indigo-200 mt-0.5">
+                        <span id="syncStatusBadge" class="inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-400/30 font-medium">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> เชื่อมต่อ Google Sheets เรียบร้อยแล้ว (ซิงค์อัตโนมัติ)
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="forceSyncNow()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-rotate"></i> ซิงค์ข้อมูลทันที
+                </button>
+                <button onclick="clearAllData()" class="bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-trash-can"></i> ล้างข้อมูลทั้งหมด
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full flex flex-col gap-6">
+
+        <!-- SECTION 1: TOP PANEL - Input Forms & Limits -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Threshold Settings Card (4 cols) -->
+            <div class="lg:col-span-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-indigo-600"></i> ตั้งค่าเพดานอั้นทั่วไป (เกิน = สีแดง)
+                    </h2>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวบน (บาท)</label>
+                            <input type="number" id="limit2DTop" value="500" onchange="triggerAutoSave()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวล่าง (บาท)</label>
+                            <input type="number" id="limit2DBottom" value="500" onchange="triggerAutoSave()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">3 ตัวตรง (บาท)</label>
+                            <input type="number" id="limit3DDirect" value="50" onchange="triggerAutoSave()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">3 ตัวโต๊ด (บาท)</label>
+                            <input type="number" id="limit3DTod" value="50" onchange="triggerAutoSave()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Custom Rules Setup -->
+                    <div class="border-t border-slate-200 pt-3">
+                        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <i class="fa-solid fa-ban text-rose-500"></i> ตั้งค่าเลขอั้นเฉพาะ & เลขจ่ายครึ่ง
+                        </h3>
+                        <div class="space-y-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+                            <div class="grid grid-cols-12 gap-1.5">
+                                <input type="text" id="ruleNum" placeholder="เลข (เช่น 89)" class="col-span-3 px-2 py-1.5 border border-slate-300 rounded font-bold text-center focus:outline-none">
+                                <select id="ruleType" class="col-span-5 px-1 py-1.5 border border-slate-300 rounded focus:outline-none">
+                                    <option value="2DBoth">2 ตัว (บน + ล่าง)</option>
+                                    <option value="2DTop">2 บน</option>
+                                    <option value="2DBottom">2 ล่าง</option>
+                                    <option value="3DBoth">3 ตัว (ตรง + โต๊ด)</option>
+                                    <option value="3DDirect">3 ตรง</option>
+                                    <option value="3DTod">3 โต๊ด</option>
+                                </select>
+                                <select id="ruleStatus" onchange="toggleRuleMaxInput()" class="col-span-4 px-1 py-1.5 border border-slate-300 rounded font-semibold text-rose-600 focus:outline-none">
+                                    <option value="BLOCKED">เลขอั้น (ห้ามเกิน)</option>
+                                    <option value="HALF">จ่ายครึ่งราคา</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex items-center justify-between gap-2 pt-1">
+                                <label class="inline-flex items-center cursor-pointer text-xs font-bold text-indigo-800">
+                                    <input type="checkbox" id="ruleIncludeReverse" class="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 mr-1.5">
+                                    <i class="fa-solid fa-right-left text-indigo-600 mr-1"></i> รวมตัวกลับด้วย
+                                </label>
+                                <div id="ruleMaxContainer" class="flex items-center gap-1.5">
+                                    <span class="text-slate-500 text-[11px]">เพดาน (บาท):</span>
+                                    <input type="number" id="ruleMax" placeholder="0 = ปิดรับเลย" value="0" class="w-24 px-2 py-1 border border-slate-300 rounded font-bold text-rose-700 focus:outline-none">
+                                </div>
+                            </div>
+
+                            <button onclick="addSpecialRule()" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-1.5 rounded font-medium transition flex items-center justify-center gap-1 mt-1">
+                                <i class="fa-solid fa-plus text-xs"></i> เพิ่มกฎเลขนี้
+                            </button>
+                        </div>
+
+                        <!-- Rules List -->
+                        <div id="rulesList" class="mt-2 space-y-1 max-h-28 overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- Export Buttons -->
+                <div class="mt-4 pt-3 border-t border-slate-200">
+                    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">ส่งออกข้อมูล Excel</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="exportExcessToExcel()" class="bg-rose-600 hover:bg-rose-700 text-white py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow transition">
+                            <i class="fa-solid fa-file-excel"></i> ส่งเฉพาะส่วนเกิน
+                        </button>
+                        <button onclick="exportAllToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow transition">
+                            <i class="fa-solid fa-file-csv"></i> ส่งออกทั้งหมด
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fast Input Card (8 cols) -->
+            <div class="lg:col-span-8 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-keyboard text-indigo-600"></i> คีย์ข้อมูลยอดซื้อ
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- FORM 1: 2-Digit Entry -->
+                    <form onsubmit="handleFormSubmit2D(event)" class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex flex-col justify-between space-y-3">
+                        <div class="font-bold text-sm text-indigo-900 border-b border-indigo-200 pb-2 flex items-center justify-between">
+                            <span><i class="fa-solid fa-hashtag text-indigo-600 mr-1"></i> ป้อนเลข 2 ตัว</span>
+                            <span class="text-xs font-normal text-slate-500">(บน / ล่าง)</span>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-medium text-slate-600">หมายเลข 2 ตัว</label>
+                                <label class="inline-flex items-center cursor-pointer text-xs font-bold text-indigo-800 hover:text-indigo-900">
+                                    <input type="checkbox" id="input2DReverse" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 mr-1.5">
+                                    <i class="fa-solid fa-right-left text-indigo-600 mr-1"></i> ตัวกลับ
+                                </label>
+                            </div>
+                            <input type="text" id="inputNum2D" maxlength="2" pattern="\d{1,2}" required placeholder="เช่น 89" onkeydown="handleEnterKey(event, 'inputPrice2DTop')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-lg font-bold text-center text-indigo-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวบน (บาท)</label>
+                                <input type="number" id="inputPrice2DTop" min="0" placeholder="0" onkeydown="handleEnterKey(event, 'inputPrice2DBottom')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวล่าง (บาท)</label>
+                                <input type="number" id="inputPrice2DBottom" min="0" placeholder="0" onkeydown="handleEnterKey(event, null)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-plus-circle"></i> บันทึกเลข 2 ตัว
+                        </button>
+                    </form>
+
+                    <!-- FORM 2: 3-Digit Entry -->
+                    <form onsubmit="handleFormSubmit3D(event)" class="bg-amber-50/50 p-4 rounded-xl border border-amber-200/60 flex flex-col justify-between space-y-3">
+                        <div class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-2 flex items-center justify-between">
+                            <span><i class="fa-solid fa-hashtag text-amber-600 mr-1"></i> ป้อนเลข 3 ตัว</span>
+                            <span class="text-xs font-normal text-slate-500">(ตรง / โต๊ด)</span>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-medium text-slate-600">หมายเลข 3 ตัว</label>
+                                <label class="inline-flex items-center cursor-pointer text-xs font-bold text-amber-800 hover:text-amber-900">
+                                    <input type="checkbox" id="input6Permutations" class="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 mr-1.5">
+                                    <i class="fa-solid fa-arrows-rotate text-amber-600 mr-1"></i> 6 กลับ
+                                </label>
+                            </div>
+                            <input type="text" id="inputNum3D" maxlength="3" pattern="\d{3}" required placeholder="เช่น 123" onkeydown="handleEnterKey(event, 'inputPrice3DDirect')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-lg font-bold text-center text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">3 ตรง (บาท)</label>
+                                <input type="number" id="inputPrice3DDirect" min="0" placeholder="0" onkeydown="handleEnterKey(event, 'inputPrice3DTod')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">3 โต๊ด (บาท)</label>
+                                <input type="number" id="inputPrice3DTod" min="0" placeholder="0" onkeydown="handleEnterKey(event, null)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-plus-circle"></i> บันทึกเลข 3 ตัว
+                        </button>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- SUMMARY BAR -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                <span class="text-xs text-slate-500 font-medium block">2 ตัวบน</span>
+                <span id="total2DTopAmount" class="text-lg font-bold text-slate-800">0 ฿</span>
+            </div>
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                <span class="text-xs text-slate-500 font-medium block">2 ตัวล่าง</span>
+                <span id="total2DBottomAmount" class="text-lg font-bold text-slate-800">0 ฿</span>
+            </div>
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                <span class="text-xs text-slate-500 font-medium block">3 ตัวตรง</span>
+                <span id="total3DDirectAmount" class="text-lg font-bold text-slate-800">0 ฿</span>
+            </div>
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                <span class="text-xs text-slate-500 font-medium block">3 ตัวโต๊ด</span>
+                <span id="total3DTodAmount" class="text-lg font-bold text-slate-800">0 ฿</span>
+            </div>
+            <div class="bg-indigo-60 p-3 rounded-xl shadow-sm border border-indigo-200 bg-indigo-50 col-span-2 sm:col-span-1">
+                <span class="text-xs text-indigo-700 font-medium block">รวมยอดสุทธิ</span>
+                <span id="grandTotalAmount" class="text-lg font-bold text-indigo-900">0 ฿</span>
+            </div>
+        </div>
+
+        <!-- SECTION 2: BOTTOM PANEL - Tables Displayed Below -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            
+            <div class="flex flex-wrap border-b border-slate-200 bg-slate-50">
+                <button id="tabBtn2DTop" onclick="switchTab('2DTop')" class="flex-1 min-w-[120px] py-3 px-3 font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 transition flex items-center justify-center gap-1.5 bg-white">
+                    <i class="fa-solid fa-table-cells-large"></i> 2 ตัวบน (00-99)
+                </button>
+                <button id="tabBtn2DBottom" onclick="switchTab('2DBottom')" class="flex-1 min-w-[120px] py-3 px-3 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-table-cells-large"></i> 2 ตัวล่าง (00-99)
+                </button>
+                <button id="tabBtn3DDirect" onclick="switchTab('3DDirect')" class="flex-1 min-w-[120px] py-3 px-3 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-list-ol"></i> 3 ตัวตรง
+                </button>
+                <button id="tabBtn3DTod" onclick="switchTab('3DTod')" class="flex-1 min-w-[120px] py-3 px-3 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-list-ol"></i> 3 ตัวโต๊ด
+                </button>
+            </div>
+
+            <div class="p-4">
+                <div id="tab2DTop" class="space-y-3">
+                    <div class="flex justify-between items-center text-xs text-slate-500">
+                        <span><span class="inline-block w-3 h-3 bg-red-500 rounded-sm mr-1"></span> สีแดง = ยอดเกิน <span id="limit2DTopText">500</span> บาท</span>
+                        <span class="font-medium text-slate-700">ผังเลข 2 ตัวบน (00 - 99)</span>
+                    </div>
+                    <div id="grid2DTop" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5 max-h-[500px] overflow-y-auto p-1"></div>
+                </div>
+
+                <div id="tab2DBottom" class="space-y-3 hidden">
+                    <div class="flex justify-between items-center text-xs text-slate-500">
+                        <span><span class="inline-block w-3 h-3 bg-red-500 rounded-sm mr-1"></span> สีแดง = ยอดเกิน <span id="limit2DBottomText">500</span> บาท</span>
+                        <span class="font-medium text-slate-700">ผังเลข 2 ตัวล่าง (00 - 99)</span>
+                    </div>
+                    <div id="grid2DBottom" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5 max-h-[500px] overflow-y-auto p-1"></div>
+                </div>
+
+                <div id="tab3DDirect" class="space-y-3 hidden">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-slate-500"><span class="inline-block w-3 h-3 bg-red-500 rounded-sm mr-1"></span> สีแดง = ยอดเกิน <span id="limit3DDirectText">50</span> บาท</span>
+                        <input type="text" id="search3DDirect" oninput="render3DTable('Direct')" placeholder="ค้นหาเลข 3 ตัวตรง..." class="px-2.5 py-1 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0">
+                                <tr>
+                                    <th class="py-2.5 px-4 rounded-l-lg">เลข 3 ตัวตรง</th>
+                                    <th class="py-2.5 px-4 text-right">ยอดรวม (บาท)</th>
+                                    <th class="py-2.5 px-4 text-center">สถานะ</th>
+                                    <th class="py-2.5 px-4 rounded-r-lg text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="body3DDirect" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="tab3DTod" class="space-y-3 hidden">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-slate-500"><span class="inline-block w-3 h-3 bg-red-500 rounded-sm mr-1"></span> สีแดง = ยอดเกิน <span id="limit3DTodText">50</span> บาท</span>
+                        <input type="text" id="search3DTod" oninput="render3DTable('Tod')" placeholder="ค้นหาเลข 3 ตัวโต๊ด..." class="px-2.5 py-1 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0">
+                                <tr>
+                                    <th class="py-2.5 px-4 rounded-l-lg">เลข 3 ตัวโต๊ด</th>
+                                    <th class="py-2.5 px-4 text-right">ยอดรวม (บาท)</th>
+                                    <th class="py-2.5 px-4 text-center">สถานะ</th>
+                                    <th class="py-2.5 px-4 rounded-r-lg text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="body3DTod" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: MASTER TRANSACTION LOG TABLE -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-slate-800 text-white px-5 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-amber-400"></i>
+                    <h2 class="font-bold text-base">ตารางรายการที่คีย์ทั้งหมด (ประวัติ & แก้ไขรายการ)</h2>
+                </div>
+                <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-full" id="historyCountText">0 รายการ</span>
+            </div>
+
+            <div class="p-4">
+                <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0">
+                            <tr>
+                                <th class="py-2.5 px-3">เวลาที่บันทึก</th>
+                                <th class="py-2.5 px-3">ประเภท</th>
+                                <th class="py-2.5 px-3 text-center">หมายเลข</th>
+                                <th class="py-2.5 px-3 text-right">จำนวนเงิน (บาท)</th>
+                                <th class="py-2.5 px-3 text-center">สถานะการซื้อ</th>
+                                <th class="py-2.5 px-3 text-center">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Google Sheets Sync Script -->
+    <script>
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAbhdglJfourxmoCS5xvKpGIuFuyAjuWP-AklPxbqgrvLj9ijxdmM2Z_CZF3ej2vhG/exec";
+
+        let data2DTop = {};
+        let data2DBottom = {};
+        let data3DDirect = {};
+        let data3DTod = {};
+        let specialRules = [];
+        let historyLogs = [];
+        let isSyncing = false;
+
+        async function fetchFromGoogleSheets() {
+            if (isSyncing) return;
+            isSyncing = true;
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const json = await response.json();
+                if (json && json.timestamp) {
+                    data2DTop = json.data2DTop || {};
+                    data2DBottom = json.data2DBottom || {};
+                    data3DDirect = json.data3DDirect || {};
+                    data3DTod = json.data3DTod || {};
+                    specialRules = json.specialRules || [];
+                    historyLogs = json.historyLogs || [];
+
+                    if (json.limits) {
+                        if (document.activeElement.id !== 'limit2DTop') document.getElementById('limit2DTop').value = json.limits.l2DTop || 500;
+                        if (document.activeElement.id !== 'limit2DBottom') document.getElementById('limit2DBottom').value = json.limits.l2DBottom || 500;
+                        if (document.activeElement.id !== 'limit3DDirect') document.getElementById('limit3DDirect').value = json.limits.l3DDirect || 50;
+                        if (document.activeElement.id !== 'limit3DTod') document.getElementById('limit3DTod').value = json.limits.l3DTod || 50;
+                    }
+
+                    renderRulesList();
+                    renderTables();
+                    updateSyncStatusBadge(true, "ซิงค์กับ Google Sheets เรียบร้อย");
+                }
+            } catch (error) {
+                console.error("Fetch sync error:", error);
+                updateSyncStatusBadge(false, "ออฟไลน์ / การเชื่อมต่อขัดข้อง");
+            } finally {
+                isSyncing = false;
+            }
+        }
+
+        async function saveToGoogleSheets() {
+            const payload = {
+                timestamp: Date.now(),
+                data2DTop,
+                data2DBottom,
+                data3DDirect,
+                data3DTod,
+                specialRules,
+                historyLogs,
+                limits: {
+                    l2DTop: parseFloat(document.getElementById('limit2DTop').value) || 500,
+                    l2DBottom: parseFloat(document.getElementById('limit2DBottom').value) || 500,
+                    l3DDirect: parseFloat(document.getElementById('limit3DDirect').value) || 50,
+                    l3DTod: parseFloat(document.getElementById('limit3DTod').value) || 50
+                }
+            };
+
+            updateSyncStatusBadge(true, "กำลังบันทึกข้อมูลไปที่ Google Sheets...");
+            try {
+                // ใช้ no-cors หรือ POST ปกติผ่าน text/plain เพื่อป้องกัน CORS issue จาก Google Apps Script
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                updateSyncStatusBadge(true, "บันทึกและซิงค์ข้อมูลถาวรสำเร็จ");
+            } catch (error) {
+                console.error("Save sync error:", error);
+                updateSyncStatusBadge(false, "บันทึกไม่สำเร็จ (ตรวจสอบเน็ต)");
+            }
+        }
+
+        function forceSyncNow() {
+            fetchFromGoogleSheets();
+        }
+
+        function triggerAutoSave() {
+            saveToGoogleSheets();
+            renderTables();
+        }
+
+        function updateSyncStatusBadge(isSuccess, text) {
+            const badge = document.getElementById('syncStatusBadge');
+            if (isSuccess) {
+                badge.className = "inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-400/30 font-medium";
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> ${text}`;
+            } else {
+                badge.className = "inline-flex items-center gap-1.5 bg-rose-500/20 text-rose-300 px-2.5 py-0.5 rounded-full border border-rose-400/30 font-medium";
+                badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span> ${text}`;
+            }
+        }
+
+        function handleEnterKey(event, nextInputId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (nextInputId) {
+                    const nextInput = document.getElementById(nextInputId);
+                    if (nextInput) nextInput.focus();
+                } else {
+                    const form = event.target.closest('form');
+                    if (form) form.requestSubmit();
+                }
+            }
+        }
+
+        function toggleRuleMaxInput() {
+            const status = document.getElementById('ruleStatus').value;
+            const container = document.getElementById('ruleMaxContainer');
+            if (status === 'BLOCKED') container.classList.remove('hidden');
+            else container.classList.add('hidden');
+        }
+
+        function addSpecialRule() {
+            const num = document.getElementById('ruleNum').value.trim();
+            const type = document.getElementById('ruleType').value;
+            const status = document.getElementById('ruleStatus').value;
+            const maxVal = parseFloat(document.getElementById('ruleMax').value) || 0;
+            const includeReverse = document.getElementById('ruleIncludeReverse').checked;
+
+            if (!num) {
+                alert('กรุณาระบุหมายเลข');
+                return;
+            }
+
+            let numsToAdd = [num];
+            if (includeReverse && num.length === 2) {
+                const rev = num.split('').reverse().join('');
+                if (rev !== num) numsToAdd.push(rev);
+            }
+
+            numsToAdd.forEach(n => {
+                const existingIndex = specialRules.findIndex(r => r.number === n && r.type === type);
+                const newRule = { id: Date.now() + Math.random(), number: n, type: type, status: status, maxAmount: maxVal };
+                if (existingIndex >= 0) specialRules[existingIndex] = newRule;
+                else specialRules.push(newRule);
+            });
+
+            document.getElementById('ruleNum').value = '';
+            document.getElementById('ruleIncludeReverse').checked = false;
+            
+            saveToGoogleSheets();
+            renderRulesList();
+            renderTables();
+        }
+
+        function deleteSpecialRule(id) {
+            specialRules = specialRules.filter(r => r.id !== id);
+            saveToGoogleSheets();
+            renderRulesList();
+            renderTables();
+        }
+
+        function renderRulesList() {
+            const list = document.getElementById('rulesList');
+            if (!list) return;
+            if (specialRules.length === 0) {
+                list.innerHTML = `<p class="text-[11px] text-slate-400 text-center py-1">ยังไม่มีการตั้งค่าเลขอั้น/จ่ายครึ่ง</p>`;
+                return;
+            }
+
+            const typeLabels = {
+                '2DBoth': '2 ตัว (บน+ล่าง)', '2DTop': '2 บน', '2DBottom': '2 ล่าง',
+                '3DBoth': '3 ตัว (ตรง+โต๊ด)', '3DDirect': '3 ตรง', '3DTod': '3 โต๊ด'
+            };
+
+            list.innerHTML = specialRules.map(r => `
+                <div class="flex items-center justify-between bg-white px-2.5 py-1.5 rounded border border-slate-200 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-bold text-slate-800">${r.number}</span>
+                        <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">${typeLabels[r.type] || r.type}</span>
+                        <span class="text-[10px] font-bold ${r.status === 'BLOCKED' ? 'text-red-600' : 'text-amber-600'}">
+                            ${r.status === 'BLOCKED' ? `อั้น (${r.maxAmount > 0 ? r.maxAmount + '฿' : 'ปิดรับ'})` : 'จ่ายครึ่ง'}
+                        </span>
+                    </div>
+                    <button onclick="deleteSpecialRule(${r.id})" class="text-slate-400 hover:text-red-600 text-xs">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function checkRuleViolation(num, typeCategory, currentAmount, addedAmount) {
+            const newTotal = currentAmount + addedAmount;
+            const applicableRules = specialRules.filter(r => {
+                if (r.number !== num) return false;
+                if (r.type === typeCategory) return true;
+                if (r.type === '2DBoth' && (typeCategory === '2DTop' || typeCategory === '2DBottom')) return true;
+                if (r.type === '3DBoth' && (typeCategory === '3DDirect' || typeCategory === '3DTod')) return true;
+                return false;
+            });
+
+            for (const r of applicableRules) {
+                if (r.status === 'BLOCKED') {
+                    if (newTotal > r.maxAmount) return { blocked: true, rule: r };
+                }
+            }
+            return { blocked: false };
+        }
+
+        function getRuleStatusTag(num, typeCategory) {
+            const applicableRules = specialRules.filter(r => {
+                if (r.number !== num) return false;
+                if (r.type === typeCategory) return true;
+                if (r.type === '2DBoth' && (typeCategory === '2DTop' || typeCategory === '2DBottom')) return true;
+                if (r.type === '3DBoth' && (typeCategory === '3DDirect' || typeCategory === '3DTod')) return true;
+                return false;
+            });
+
+            if (applicableRules.some(r => r.status === 'BLOCKED')) return 'BLOCKED';
+            if (applicableRules.some(r => r.status === 'HALF')) return 'HALF';
+            return 'NORMAL';
+        }
+
+        function handleFormSubmit2D(event) {
+            event.preventDefault();
+            const numInput = document.getElementById('inputNum2D');
+            const topPriceInput = document.getElementById('inputPrice2DTop');
+            const bottomPriceInput = document.getElementById('inputPrice2DBottom');
+            const isReverse = document.getElementById('input2DReverse').checked;
+
+            let num = numInput.value.trim();
+            if (num.length === 1) num = '0' + num;
+            const topPrice = parseFloat(topPriceInput.value) || 0;
+            const bottomPrice = parseFloat(bottomPriceInput.value) || 0;
+
+            if (topPrice === 0 && bottomPrice === 0) {
+                alert('กรุณาระบุจำนวนเงินอย่างน้อย 1 ช่อง');
+                return;
+            }
+
+            let numsToProcess = [num];
+            if (isReverse && num.length === 2) {
+                const revNum = num.split('').reverse().join('');
+                if (revNum !== num) numsToProcess.push(revNum);
+            }
+
+            for (const n of numsToProcess) {
+                if (topPrice > 0) {
+                    const check = checkRuleViolation(n, '2DTop', data2DTop[n] || 0, topPrice);
+                    if (check.blocked) {
+                        alert(`ไม่สามารถบันทึกได้! เลข ${n} (2 ตัวบน) เป็นเลขอั้นเกินเพดาน (${check.rule.maxAmount} บาท)`);
+                        return;
+                    }
+                }
+                if (bottomPrice > 0) {
+                    const check = checkRuleViolation(n, '2DBottom', data2DBottom[n] || 0, bottomPrice);
+                    if (check.blocked) {
+                        alert(`ไม่สามารถบันทึกได้! เลข ${n} (2 ตัวล่าง) เป็นเลขอั้นเกินเพดาน (${check.rule.maxAmount} บาท)`);
+                        return;
+                    }
+                }
+            }
+
+            numsToProcess.forEach(n => {
+                if (topPrice > 0) {
+                    data2DTop[n] = (data2DTop[n] || 0) + topPrice;
+                    addHistoryLog('2 ตัวบน', n, topPrice, getRuleStatusTag(n, '2DTop'));
+                }
+                if (bottomPrice > 0) {
+                    data2DBottom[n] = (data2DBottom[n] || 0) + bottomPrice;
+                    addHistoryLog('2 ตัวล่าง', n, bottomPrice, getRuleStatusTag(n, '2DBottom'));
+                }
+            });
+
+            numInput.value = '';
+            topPriceInput.value = '';
+            bottomPriceInput.value = '';
+            document.getElementById('input2DReverse').checked = false;
+            numInput.focus();
+
+            saveToGoogleSheets();
+            renderTables();
+        }
+
+        function getPermutations(str) {
+            if (str.length <= 1) return [str];
+            let permutations = [];
+            for (let i = 0; i < str.length; i++) {
+                let char = str[i];
+                let remainingChars = str.slice(0, i) + str.slice(i + 1);
+                for (let permutation of getPermutations(remainingChars)) {
+                    permutations.push(char + permutation);
+                }
+            }
+            return [...new Set(permutations)];
+        }
+
+        function handleFormSubmit3D(event) {
+            event.preventDefault();
+            const numInput = document.getElementById('inputNum3D');
+            const directPriceInput = document.getElementById('inputPrice3DDirect');
+            const todPriceInput = document.getElementById('inputPrice3DTod');
+            const is6Perm = document.getElementById('input6Permutations').checked;
+
+            const num = numInput.value.trim();
+            const directPrice = parseFloat(directPriceInput.value) || 0;
+            const todPrice = parseFloat(todPriceInput.value) || 0;
+
+            if (directPrice === 0 && todPrice === 0) {
+                alert('กรุณาระบุจำนวนเงินอย่างน้อย 1 ช่อง');
+                return;
+            }
+
+            let numsToProcess = is6Perm ? getPermutations(num) : [num];
+
+            for (const n of numsToProcess) {
+                if (directPrice > 0) {
+                    const check = checkRuleViolation(n, '3DDirect', data3DDirect[n] || 0, directPrice);
+                    if (check.blocked) {
+                        alert(`ไม่สามารถบันทึกได้! เลข ${n} (3 ตรง) เป็นเลขอั้นเกินเพดาน (${check.rule.maxAmount} บาท)`);
+                        return;
+                    }
+                }
+                if (todPrice > 0) {
+                    const check = checkRuleViolation(n, '3DTod', data3DTod[n] || 0, todPrice);
+                    if (check.blocked) {
+                        alert(`ไม่สามารถบันทึกได้! เลข ${n} (3 โต๊ด) เป็นเลขอั้นเกินเพดาน (${check.rule.maxAmount} บาท)`);
+                        return;
+                    }
+                }
+            }
+
+            numsToProcess.forEach(n => {
+                if (directPrice > 0) {
+                    data3DDirect[n] = (data3DDirect[n] || 0) + directPrice;
+                    addHistoryLog('3 ตัวตรง', n, directPrice, getRuleStatusTag(n, '3DDirect'));
+                }
+                if (todPrice > 0) {
+                    data3DTod[n] = (data3DTod[n] || 0) + todPrice;
+                    addHistoryLog('3 ตัวโต๊ด', n, todPrice, getRuleStatusTag(n, '3DTod'));
+                }
+            });
+
+            numInput.value = '';
+            directPriceInput.value = '';
+            todPriceInput.value = '';
+            document.getElementById('input6Permutations').checked = false;
+            numInput.focus();
+
+            saveToGoogleSheets();
+            renderTables();
+        }
+
+        function addHistoryLog(type, num, amount, statusTag) {
+            historyLogs.unshift({
+                id: Date.now() + Math.random(),
+                time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                type: type,
+                number: num,
+                amount: amount,
+                statusTag: statusTag
+            });
+        }
+
+        function deleteHistoryItem(id) {
+            const item = historyLogs.find(h => h.id === id);
+            if (!item) return;
+
+            if (item.type === '2 ตัวบน') data2DTop[item.number] = Math.max(0, (data2DTop[item.number] || 0) - item.amount);
+            else if (item.type === '2 ตัวล่าง') data2DBottom[item.number] = Math.max(0, (data2DBottom[item.number] || 0) - item.amount);
+            else if (item.type === '3 ตัวตรง') data3DDirect[item.number] = Math.max(0, (data3DDirect[item.number] || 0) - item.amount);
+            else if (item.type === '3 ตัวโต๊ด') data3DTod[item.number] = Math.max(0, (data3DTod[item.number] || 0) - item.amount);
+
+            historyLogs = historyLogs.filter(h => h.id !== id);
+            saveToGoogleSheets();
+            renderTables();
+        }
+
+        function renderTables() {
+            render2DGrid('Top', data2DTop, 'limit2DTop');
+            render2DGrid('Bottom', data2DBottom, 'limit2DBottom');
+            render3DTable('Direct');
+            render3DTable('Tod');
+            renderHistoryTable();
+            updateSummaries();
+        }
+
+        function render2DGrid(type, dataObj, limitInputId) {
+            const grid = document.getElementById(`grid2D${type}`);
+            const limit = parseFloat(document.getElementById(limitInputId).value) || 0;
+            const textElem = document.getElementById(`${limitInputId}Text`);
+            if (textElem) textElem.innerText = limit;
+            
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            for (let i = 0; i < 100; i++) {
+                const numStr = i.toString().padStart(2, '0');
+                const amount = (dataObj && dataObj[numStr]) ? dataObj[numStr] : 0;
+                const isOver = amount > limit && limit > 0;
+
+                const cell = document.createElement('div');
+                cell.className = `p-1.5 rounded-lg border text-center transition flex flex-col justify-between h-14 ${
+                    isOver 
+                        ? 'bg-red-500 text-white border-red-600 shadow-sm font-bold scale-[1.02]' 
+                        : amount > 0 
+                            ? 'bg-emerald-50 text-emerald-900 border-emerald-300 font-semibold' 
+                            : 'bg-white text-slate-700 border-slate-200'
+                }`;
+
+                cell.innerHTML = `
+                    <span class="text-xs ${isOver ? 'text-white' : 'text-slate-500'} font-bold">${numStr}</span>
+                    <span class="text-[11px] truncate">${amount > 0 ? amount.toLocaleString() : '-'}</span>
+                `;
+                grid.appendChild(cell);
+            }
+        }
+
+        function render3DTable(type) {
+            const dataObj = type === 'Direct' ? data3DDirect : data3DTod;
+            const limitInput = document.getElementById(`limit3D${type}`);
+            const limit = limitInput ? (parseFloat(limitInput.value) || 0) : 0;
+            const searchVal = (document.getElementById(`search3D${type}`)?.value || '').trim();
+            const tbody = document.getElementById(`body3D${type}`);
+            const textElem = document.getElementById(`limit3D${type}Text`);
+            if (textElem) textElem.innerText = limit;
+
+            if (!tbody) return;
+
+            let keys = Object.keys(dataObj || {}).filter(k => dataObj[k] > 0);
+            if (searchVal) keys = keys.filter(k => k.includes(searchVal));
+            keys.sort();
+
+            if (keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-400 text-xs">ยังไม่มีข้อมูลยอดซื้อ</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = keys.map(num => {
+                const amount = dataObj[num];
+                const isOver = amount > limit && limit > 0;
+                return `
+                    <tr class="${isOver ? 'bg-red-50 text-red-900 font-bold' : 'hover:bg-slate-50'}">
+                        <td class="py-2 px-4 font-mono font-bold text-base">${num}</td>
+                        <td class="py-2 px-4 text-right font-semibold">${amount.toLocaleString()} ฿</td>
+                        <td class="py-2 px-4 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isOver ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600'}">
+                                ${isOver ? 'เกินเพดาน' : 'ปกติ'}
+                            </span>
+                        </td>
+                        <td class="py-2 px-4 text-center">
+                            <button onclick="clearSingle3D('${type}', '${num}')" class="text-slate-400 hover:text-red-600 text-xs">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function clearSingle3D(type, num) {
+            if (type === 'Direct') delete data3DDirect[num];
+            else delete data3DTod[num];
+
+            historyLogs = historyLogs.filter(h => !(h.number === num && (type === 'Direct' ? h.type === '3 ตัวตรง' : h.type === '3 ตัวโต๊ด')));
+            saveToGoogleSheets();
+            renderTables();
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            const countText = document.getElementById('historyCountText');
+            if (countText) countText.innerText = `${historyLogs.length} รายการ`;
+
+            if (!tbody) return;
+
+            if (historyLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-400 text-xs">ยังไม่มีประวัติรายการที่คีย์</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = historyLogs.map(item => `
+                <tr class="hover:bg-slate-50 border-b border-slate-100">
+                    <td class="py-2 px-3 text-xs text-slate-500 font-mono">${item.time}</td>
+                    <td class="py-2 px-3 text-xs font-bold text-slate-700">${item.type}</td>
+                    <td class="py-2 px-3 text-center font-mono font-bold text-sm text-indigo-900">${item.number}</td>
+                    <td class="py-2 px-3 text-right font-semibold text-slate-800">${item.amount.toLocaleString()} ฿</td>
+                    <td class="py-2 px-3 text-center">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            item.statusTag === 'BLOCKED' ? 'bg-red-100 text-red-700 border border-red-200' :
+                            item.statusTag === 'HALF' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                            'bg-emerald-100 text-emerald-700'
+                        }">
+                            ${item.statusTag === 'BLOCKED' ? 'เลขอั้น' : item.statusTag === 'HALF' ? 'จ่ายครึ่งราคา' : 'จ่ายปกติ'}
+                        </span>
+                    </td>
+                    <td class="py-2 px-3 text-center">
+                        <button onclick="deleteHistoryItem(${item.id})" class="text-slate-400 hover:text-red-600 text-xs px-2 py-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateSummaries() {
+            const sum2DTop = Object.values(data2DTop || {}).reduce((a, b) => a + b, 0);
+            const sum2DBottom = Object.values(data2DBottom || {}).reduce((a, b) => a + b, 0);
+            const sum3DDirect = Object.values(data3DDirect || {}).reduce((a, b) => a + b, 0);
+            const sum3DTod = Object.values(data3DTod || {}).reduce((a, b) => a + b, 0);
+            const grandTotal = sum2DTop + sum2DBottom + sum3DDirect + sum3DTod;
+
+            document.getElementById('total2DTopAmount').innerText = `${sum2DTop.toLocaleString()} ฿`;
+            document.getElementById('total2DBottomAmount').innerText = `${sum2DBottom.toLocaleString()} ฿`;
+            document.getElementById('total3DDirectAmount').innerText = `${sum3DDirect.toLocaleString()} ฿`;
+            document.getElementById('total3DTodAmount').innerText = `${sum3DTod.toLocaleString()} ฿`;
+            document.getElementById('grandTotalAmount').innerText = `${grandTotal.toLocaleString()} ฿`;
+        }
+
+        function switchTab(tabName) {
+            ['2DTop', '2DBottom', '3DDirect', '3DTod'].forEach(t => {
+                const btn = document.getElementById(`tabBtn${t}`);
+                const content = document.getElementById(`tab${t}`);
+                if (t === tabName) {
+                    if (btn) btn.className = "flex-1 min-w-[120px] py-3 px-3 font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600 transition flex items-center justify-center gap-1.5 bg-white";
+                    if (content) content.classList.remove('hidden');
+                } else {
+                    if (btn) btn.className = "flex-1 min-w-[120px] py-3 px-3 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition flex items-center justify-center gap-1.5";
+                    if (content) content.classList.add('hidden');
+                }
+            });
+        }
+
+        function exportExcessToExcel() {
+            const lim2DTop = parseFloat(document.getElementById('limit2DTop').value) || 0;
+            const lim2DBottom = parseFloat(document.getElementById('limit2DBottom').value) || 0;
+            const lim3DDirect = parseFloat(document.getElementById('limit3DDirect').value) || 0;
+            const lim3DTod = parseFloat(document.getElementById('limit3DTod').value) || 0;
+
+            let excessRows = [];
+            let totalExcess = 0;
+
+            const processExcess = (typeLabel, dataObj, limit) => {
+                Object.keys(dataObj || {}).forEach(num => {
+                    const amount = dataObj[num];
+                    if (amount > limit) {
+                        const excess = amount - limit;
+                        excessRows.push({
+                            "ประเภท": typeLabel,
+                            "หมายเลข": num,
+                            "ยอดส่งออกส่วนเกิน": excess
+                        });
+                        totalExcess += excess;
+                    }
+                });
+            };
+
+            processExcess('2 ตัวบน', data2DTop, lim2DTop);
+            processExcess('2 ตัวล่าง', data2DBottom, lim2DBottom);
+            processExcess('3 ตัวตรง', data3DDirect, lim3DDirect);
+            processExcess('3 ตัวโต๊ด', data3DTod, lim3DTod);
+
+            if (excessRows.length === 0) {
+                alert('ไม่มียอดที่เกินกำหนดที่ตั้งไว้');
+                return;
+            }
+
+            const wsData = [
+                ["รายงานยอดส่งออกส่วนเกิน (ตัดยอดอั้นออกแล้ว)"],
+                [`วันที่ออกรายงาน: ${new Date().toLocaleString('th-TH')}`],
+                [],
+                ["ประเภท", "หมายเลข", "ยอดส่งออกส่วนเกิน (บาท)"]
+            ];
+
+            excessRows.forEach(r => wsData.push([r["ประเภท"], r["หมายเลข"], r["ยอดส่งออกส่วนเกิน"]]));
+            wsData.push([]);
+            wsData.push(["ยอดรวมทั้งสิ้น", "", totalExcess]);
+
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            ws['!cols'] = [{ wch: 18 }, { wch: 14 }, { wch: 25 }];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ยอดส่งออกส่วนเกิน");
+            XLSX.writeFile(wb, `Lottery_Excess_Export_${Date.now()}.xlsx`);
+        }
+
+        function exportAllToExcel() {
+            let allRows = [];
+            const collect = (typeLabel, dataObj) => {
+                Object.keys(dataObj || {}).forEach(num => {
+                    if (dataObj[num] > 0) {
+                        allRows.push({ "ประเภท": typeLabel, "หมายเลข": num, "ยอดรวม": dataObj[num] });
+                    }
+                });
+            };
+
+            collect('2 ตัวบน', data2DTop);
+            collect('2 ตัวล่าง', data2DBottom);
+            collect('3 ตัวตรง', data3DDirect);
+            collect('3 ตัวโต๊ด', data3DTod);
+
+            if (allRows.length === 0) {
+                alert('ยังไม่มีข้อมูลสำหรับส่งออก');
+                return;
+            }
+
+            const ws = XLSX.utils.json_to_sheet(allRows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ข้อมูลทั้งหมด");
+            XLSX.writeFile(wb, `Lottery_All_Data_${Date.now()}.xlsx`);
+        }
+
+        function clearAllData() {
+            if (confirm('คุณต้องการล้างข้อมูลยอดซื้อทั้งหมดหรือไม่? (ข้อมูลใน Google Sheets จะถูกล้างพร้อมกันทุกเครื่อง)')) {
+                data2DTop = {};
+                data2DBottom = {};
+                data3DDirect = {};
+                data3DTod = {};
+                historyLogs = [];
+                saveToGoogleSheets();
+                renderTables();
+            }
+        }
+
+        // ระบบตรวจสอบล็อกอิน
+        function handleLogin(event) {
+            event.preventDefault();
+            const userInput = document.getElementById('loginUsername').value.trim();
+            const passInput = document.getElementById('loginPassword').value.trim();
+            const errorMsg = document.getElementById('loginErrorMsg');
+
+            if (userInput === 'Koyadmin' && passInput === 'Supadmin@888') {
+                sessionStorage.setItem('lottery_logged_in', 'true');
+                document.getElementById('loginModal').classList.add('hidden');
+                fetchFromGoogleSheets();
+            } else {
+                errorMsg.classList.remove('hidden');
+            }
+        }
+
+        // โหลดข้อมูลเริ่มต้นและตรวจสอบสถานะการล็อกอิน
+        window.onload = function() {
+            const isLoggedIn = sessionStorage.getItem('lottery_logged_in');
+            if (isLoggedIn === 'true') {
+                document.getElementById('loginModal').classList.add('hidden');
+                fetchFromGoogleSheets();
+                setInterval(fetchFromGoogleSheets, 3000);
+            } else {
+                // หากยังไม่ล็อกอิน ให้หยุดการดึงข้อมูลอัตโนมัติจนกว่าจะกรอกรหัสผ่านผ่าน
+                document.getElementById('loginModal').classList.remove('hidden');
+            }
+        };
+    </script>
+</body>
+</html>
