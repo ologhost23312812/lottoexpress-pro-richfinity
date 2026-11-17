@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบจัดการยอดหวย - Google Sheets Real-time Sync ถาวร</title>
+    <title>ระบบจัดการยอดหวย - แยกบิลลูกค้า & Google Sheets Sync</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS (xlsx) for Excel Export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- SheetJS with Styling (xlsx-js-style) for Styled Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <!-- Google Font Prompt -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
@@ -28,6 +28,45 @@
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- CUSTOM TOAST NOTIFICATION (Replaces alert) -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-[60] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- CUSTOM CONFIRM MODAL (Replaces confirm) -->
+    <div id="confirmModal" class="fixed inset-0 z-[60] bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200">
+            <div class="flex items-center gap-3 text-rose-600 mb-3">
+                <div class="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800">ยืนยันการทำรายการ</h3>
+            </div>
+            <p id="confirmMessage" class="text-sm text-slate-600 mb-6 leading-relaxed"></p>
+            <div class="flex justify-end gap-2">
+                <button id="confirmCancelBtn" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition">ยกเลิก</button>
+                <button id="confirmOkBtn" class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 transition shadow">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT ITEM / RENAME CUSTOMER MODAL -->
+    <div id="editModal" class="fixed inset-0 z-[60] bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <h3 id="editModalTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-indigo-600"></i> แก้ไขข้อมูล
+                </h3>
+                <button type="button" onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div id="editModalBody" class="space-y-3"></div>
+            <div class="flex justify-end gap-2 mt-6 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeEditModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 transition">ยกเลิก</button>
+                <button type="button" id="editModalSaveBtn" class="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition shadow">บันทึกการแก้ไข</button>
+            </div>
+        </div>
+    </div>
 
     <!-- LOGIN OVERLAY MODAL -->
     <div id="loginModal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -73,15 +112,15 @@
     </div>
 
     <!-- Header Navigation -->
-    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-50">
+    <header class="bg-indigo-900 text-white shadow-lg sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-file-excel text-2xl text-emerald-400"></i>
                 <div>
-                    <h1 class="text-xl font-bold tracking-wide">ระบบบริหารจัดการยอดหวย (Google Sheets Sync ถาวร)</h1>
+                    <h1 class="text-xl font-bold tracking-wide">ระบบบริหารจัดการยอดหวย (แยกบิลลูกค้า & Sync ถาวร)</h1>
                     <div class="flex items-center gap-2 text-xs text-indigo-200 mt-0.5">
                         <span id="syncStatusBadge" class="inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-400/30 font-medium">
-                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> เชื่อมต่อ Google Sheets เรียบร้อยแล้ว (ซิงค์อัตโนมัติ)
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> เชื่อมต่อ Google Sheets เรียบร้อยแล้ว
                         </span>
                     </div>
                 </div>
@@ -167,118 +206,200 @@
                         </div>
 
                         <!-- Rules List -->
-                        <div id="rulesList" class="mt-2 space-y-1 max-h-28 overflow-y-auto pr-1"></div>
+                        <div id="rulesList" class="mt-2 space-y-1 max-h-24 overflow-y-auto pr-1"></div>
                     </div>
                 </div>
 
-                <!-- Export Buttons -->
+                <!-- Global Export Buttons -->
                 <div class="mt-4 pt-3 border-t border-slate-200">
-                    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">ส่งออกข้อมูล Excel</h3>
+                    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">ส่งออกข้อมูลภาพรวมเจ้ามือ</h3>
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="exportExcessToExcel()" class="bg-rose-600 hover:bg-rose-700 text-white py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow transition">
                             <i class="fa-solid fa-file-excel"></i> ส่งเฉพาะส่วนเกิน
                         </button>
                         <button onclick="exportAllToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow transition">
-                            <i class="fa-solid fa-file-csv"></i> ส่งออกทั้งหมด
+                            <i class="fa-solid fa-file-csv"></i> ส่งออกยอดรวมทั้งหมด
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Fast Input Card (8 cols) -->
-            <div class="lg:col-span-8 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-keyboard text-indigo-600"></i> คีย์ข้อมูลยอดซื้อ
-                </h2>
+            <div class="lg:col-span-8 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <h2 class="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-keyboard text-indigo-600"></i> คีย์ข้อมูลยอดซื้อ (แยกบิลรายชื่อลูกค้า)
+                        </h2>
+                        <span class="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg font-medium border border-indigo-100">
+                            <i class="fa-solid fa-circle-info mr-1"></i> ลูกค้า 1 ชื่อ ต่อ 1 บิล (แยกยอดให้อัตโนมัติ)
+                        </span>
+                    </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <!-- FORM 1: 2-Digit Entry -->
-                    <form onsubmit="handleFormSubmit2D(event)" class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex flex-col justify-between space-y-3">
-                        <div class="font-bold text-sm text-indigo-900 border-b border-indigo-200 pb-2 flex items-center justify-between">
-                            <span><i class="fa-solid fa-hashtag text-indigo-600 mr-1"></i> ป้อนเลข 2 ตัว</span>
-                            <span class="text-xs font-normal text-slate-500">(บน / ล่าง)</span>
-                        </div>
-                        <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <label class="block text-xs font-medium text-slate-600">หมายเลข 2 ตัว</label>
-                                <label class="inline-flex items-center cursor-pointer text-xs font-bold text-indigo-800 hover:text-indigo-900">
-                                    <input type="checkbox" id="input2DReverse" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 mr-1.5">
-                                    <i class="fa-solid fa-right-left text-indigo-600 mr-1"></i> ตัวกลับ
+                    <!-- CUSTOMER HEADER BAR (1 Customer = 1 Bill) -->
+                    <div class="bg-slate-800 text-white p-3.5 rounded-xl mb-4 shadow-sm">
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                            <div class="sm:col-span-8">
+                                <label class="block text-[11px] font-medium text-slate-300 mb-1">
+                                    <i class="fa-solid fa-user-tag text-amber-400 mr-1"></i> ชื่อลูกค้า / สายส่ง (1 ชื่อ ต่อ 1 บิล)
                                 </label>
+                                <div class="relative flex gap-1.5">
+                                    <input type="text" id="inputCustomerName" list="customerDatalist" value="ลูกค้าทั่วไป" placeholder="เช่น คุณน้องก้อย, เจ๊แดง..." onchange="onCustomerInputChange()" class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm font-bold text-white placeholder-slate-400 focus:bg-slate-600 focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                                    <datalist id="customerDatalist"></datalist>
+                                    <button type="button" onclick="promptNewCustomer()" title="ล้างช่องเพื่อพิมพ์ชื่อลูกค้าใหม่" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-lg text-xs font-bold transition shrink-0">
+                                        <i class="fa-solid fa-user-plus"></i> ลูกค้าใหม่
+                                    </button>
+                                </div>
                             </div>
-                            <input type="text" id="inputNum2D" maxlength="2" pattern="\d{1,2}" required placeholder="เช่น 89" onkeydown="handleEnterKey(event, 'inputPrice2DTop')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-lg font-bold text-center text-indigo-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวบน (บาท)</label>
-                                <input type="number" id="inputPrice2DTop" min="0" placeholder="0" onkeydown="handleEnterKey(event, 'inputPrice2DBottom')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวล่าง (บาท)</label>
-                                <input type="number" id="inputPrice2DBottom" min="0" placeholder="0" onkeydown="handleEnterKey(event, null)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2 text-sm">
-                            <i class="fa-solid fa-plus-circle"></i> บันทึกเลข 2 ตัว
-                        </button>
-                    </form>
-
-                    <!-- FORM 2: 3-Digit Entry -->
-                    <form onsubmit="handleFormSubmit3D(event)" class="bg-amber-50/50 p-4 rounded-xl border border-amber-200/60 flex flex-col justify-between space-y-3">
-                        <div class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-2 flex items-center justify-between">
-                            <span><i class="fa-solid fa-hashtag text-amber-600 mr-1"></i> ป้อนเลข 3 ตัว</span>
-                            <span class="text-xs font-normal text-slate-500">(ตรง / โต๊ด)</span>
-                        </div>
-                        <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <label class="block text-xs font-medium text-slate-600">หมายเลข 3 ตัว</label>
-                                <label class="inline-flex items-center cursor-pointer text-xs font-bold text-amber-800 hover:text-amber-900">
-                                    <input type="checkbox" id="input6Permutations" class="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 mr-1.5">
-                                    <i class="fa-solid fa-arrows-rotate text-amber-600 mr-1"></i> 6 กลับ
+                            <div class="sm:col-span-4">
+                                <label class="block text-[11px] font-medium text-slate-300 mb-1">
+                                    <i class="fa-solid fa-percent text-rose-400 mr-1"></i> ส่วนลดลูกค้า (%)
                                 </label>
-                            </div>
-                            <input type="text" id="inputNum3D" maxlength="3" pattern="\d{3}" required placeholder="เช่น 123" onkeydown="handleEnterKey(event, 'inputPrice3DDirect')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-lg font-bold text-center text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">3 ตรง (บาท)</label>
-                                <input type="number" id="inputPrice3DDirect" min="0" placeholder="0" onkeydown="handleEnterKey(event, 'inputPrice3DTod')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">3 โต๊ด (บาท)</label>
-                                <input type="number" id="inputPrice3DTod" min="0" placeholder="0" onkeydown="handleEnterKey(event, null)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                                <input type="number" id="inputCustomerDiscount" min="0" max="100" step="0.5" value="25" onchange="saveCustomerDiscountPreference()" class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm font-bold text-center text-amber-300 focus:bg-slate-600 focus:ring-2 focus:ring-amber-400 focus:outline-none">
                             </div>
                         </div>
-                        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2 text-sm">
-                            <i class="fa-solid fa-plus-circle"></i> บันทึกเลข 3 ตัว
-                        </button>
-                    </form>
+                    </div>
 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        
+                        <!-- FORM 1: 2-Digit Entry -->
+                        <form onsubmit="handleFormSubmit2D(event)" class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-100 flex flex-col justify-between space-y-3">
+                            <div class="font-bold text-sm text-indigo-900 border-b border-indigo-200 pb-2 flex items-center justify-between">
+                                <span><i class="fa-solid fa-hashtag text-indigo-600 mr-1"></i> ป้อนเลข 2 ตัว</span>
+                                <span class="text-xs font-normal text-slate-500">(บน / ล่าง)</span>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="block text-xs font-medium text-slate-600">หมายเลข 2 ตัว</label>
+                                    <label class="inline-flex items-center cursor-pointer text-xs font-bold text-indigo-800 hover:text-indigo-900">
+                                        <input type="checkbox" id="input2DReverse" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 mr-1.5">
+                                        <i class="fa-solid fa-right-left text-indigo-600 mr-1"></i> ตัวกลับ
+                                    </label>
+                                </div>
+                                <input type="text" id="inputNum2D" maxlength="2" pattern="\d{1,2}" required placeholder="เช่น 89" onkeydown="handleEnterKey(event, 'inputPrice2DTop')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-lg font-bold text-center text-indigo-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวบน (บาท)</label>
+                                    <input type="number" id="inputPrice2DTop" min="0" placeholder="0" onkeydown="handleEnterKey(event, 'inputPrice2DBottom')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวล่าง (บาท)</label>
+                                    <input type="number" id="inputPrice2DBottom" min="0" placeholder="0" onkeydown="handleEnterKey(event, null)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2 text-sm">
+                                <i class="fa-solid fa-plus-circle"></i> บันทึกเลข 2 ตัว
+                            </button>
+                        </form>
+
+                        <!-- FORM 2: 3-Digit Entry -->
+                        <form onsubmit="handleFormSubmit3D(event)" class="bg-amber-50/60 p-4 rounded-xl border border-amber-200/60 flex flex-col justify-between space-y-3">
+                            <div class="font-bold text-sm text-amber-900 border-b border-amber-200 pb-2 flex items-center justify-between">
+                                <span><i class="fa-solid fa-hashtag text-amber-600 mr-1"></i> ป้อนเลข 3 ตัว</span>
+                                <span class="text-xs font-normal text-slate-500">(ตรง / โต๊ด)</span>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="block text-xs font-medium text-slate-600">หมายเลข 3 ตัว</label>
+                                    <label class="inline-flex items-center cursor-pointer text-xs font-bold text-amber-800 hover:text-amber-900">
+                                        <input type="checkbox" id="input6Permutations" class="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 mr-1.5">
+                                        <i class="fa-solid fa-arrows-rotate text-amber-600 mr-1"></i> 6 กลับ
+                                    </label>
+                                </div>
+                                <input type="text" id="inputNum3D" maxlength="3" pattern="\d{3}" required placeholder="เช่น 123" onkeydown="handleEnterKey(event, 'inputPrice3DDirect')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-lg font-bold text-center text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">3 ตรง (บาท)</label>
+                                    <input type="number" id="inputPrice3DDirect" min="0" placeholder="0" onkeydown="handleEnterKey(event, 'inputPrice3DTod')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">3 โต๊ด (บาท)</label>
+                                    <input type="number" id="inputPrice3DTod" min="0" placeholder="0" onkeydown="handleEnterKey(event, null)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base font-semibold text-center text-emerald-700 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 rounded-lg transition shadow flex items-center justify-center gap-2 text-sm">
+                                <i class="fa-solid fa-plus-circle"></i> บันทึกเลข 3 ตัว
+                            </button>
+                        </form>
+
+                    </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- SECTION 1.5: CUSTOMER FILTER & INDIVIDUAL EXCEL REPORT BAR -->
+        <div class="bg-gradient-to-r from-indigo-900 via-slate-800 to-slate-900 text-white p-4 rounded-2xl shadow-md border border-indigo-700/50">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                
+                <!-- Filter View Dropdown -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                            <i class="fa-solid fa-users"></i>
+                        </span>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase tracking-wider">แสดงข้อมูลตารางของ</label>
+                            <select id="customerFilterSelect" onchange="handleCustomerFilterChange()" class="bg-slate-800 border border-slate-600 text-white text-sm font-bold rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-amber-400 focus:outline-none min-w-[200px]">
+                                <option value="ALL">📊 แสดงรวมทุกคน (ยอดเจ้ามือทั้งหมด)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Customer Management Actions (Visible when a specific customer is selected) -->
+                    <div id="customerManageActions" class="hidden flex items-center gap-1.5 pt-3 sm:pt-4">
+                        <button type="button" onclick="openRenameCustomerModal()" title="แก้ไขชื่อลูกค้ารายนี้ทั้งหมด" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1 shadow">
+                            <i class="fa-solid fa-pen"></i> แก้ไขชื่อ
+                        </button>
+                        <button type="button" onclick="deleteSelectedCustomerBill()" title="ลบบิลของลูกค้ารายนี้ทั้งหมด" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1 shadow">
+                            <i class="fa-solid fa-trash-can"></i> ลบบิลลูกค้านี้
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Individual Bill Summary & Export Controls -->
+                <div class="flex flex-wrap items-center gap-2.5 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[11px] text-slate-300">หัวตาราง/งวด:</span>
+                        <input type="text" id="exportRoundTitle" value="หวยไทย รอบปกติ" placeholder="เช่น คุณน้องก้อยหวยไทย..." class="px-2.5 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-white w-36 focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[11px] text-slate-300">รางวัลบน (3ตัว):</span>
+                        <input type="text" id="winningTop3D" maxlength="3" placeholder="เช่น 654" class="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs font-bold text-center text-amber-300 w-16 focus:outline-none focus:border-amber-400">
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[11px] text-slate-300">รางวัลล่าง (2ตัว):</span>
+                        <input type="text" id="winningBottom2D" maxlength="2" placeholder="เช่น 06" class="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs font-bold text-center text-emerald-300 w-14 focus:outline-none focus:border-emerald-400">
+                    </div>
+                    <button onclick="exportCustomerBillExcel()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs transition shadow flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-excel text-sm"></i> ส่งออก Excel รายชื่อนี้ (แบบสรุปบิล)
+                    </button>
+                </div>
+
             </div>
         </div>
 
         <!-- SUMMARY BAR -->
         <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
-                <span class="text-xs text-slate-500 font-medium block">2 ตัวบน</span>
+                <span class="text-xs text-slate-500 font-medium block">2 ตัวบน <span class="filter-scope-label text-[10px] text-indigo-600">(ทั้งหมด)</span></span>
                 <span id="total2DTopAmount" class="text-lg font-bold text-slate-800">0 ฿</span>
             </div>
             <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
-                <span class="text-xs text-slate-500 font-medium block">2 ตัวล่าง</span>
+                <span class="text-xs text-slate-500 font-medium block">2 ตัวล่าง <span class="filter-scope-label text-[10px] text-indigo-600">(ทั้งหมด)</span></span>
                 <span id="total2DBottomAmount" class="text-lg font-bold text-slate-800">0 ฿</span>
             </div>
             <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
-                <span class="text-xs text-slate-500 font-medium block">3 ตัวตรง</span>
+                <span class="text-xs text-slate-500 font-medium block">3 ตัวตรง <span class="filter-scope-label text-[10px] text-indigo-600">(ทั้งหมด)</span></span>
                 <span id="total3DDirectAmount" class="text-lg font-bold text-slate-800">0 ฿</span>
             </div>
             <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
-                <span class="text-xs text-slate-500 font-medium block">3 ตัวโต๊ด</span>
+                <span class="text-xs text-slate-500 font-medium block">3 ตัวโต๊ด <span class="filter-scope-label text-[10px] text-indigo-600">(ทั้งหมด)</span></span>
                 <span id="total3DTodAmount" class="text-lg font-bold text-slate-800">0 ฿</span>
             </div>
-            <div class="bg-indigo-60 p-3 rounded-xl shadow-sm border border-indigo-200 bg-indigo-50 col-span-2 sm:col-span-1">
-                <span class="text-xs text-indigo-700 font-medium block">รวมยอดสุทธิ</span>
+            <div class="p-3 rounded-xl shadow-sm border border-indigo-200 bg-indigo-50 col-span-2 sm:col-span-1">
+                <span class="text-xs text-indigo-700 font-medium block">รวมยอดสุทธิ <span class="filter-scope-label text-[10px] font-bold">(ทั้งหมด)</span></span>
                 <span id="grandTotalAmount" class="text-lg font-bold text-indigo-900">0 ฿</span>
             </div>
         </div>
@@ -362,12 +483,15 @@
 
         <!-- SECTION 3: MASTER TRANSACTION LOG TABLE -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="bg-slate-800 text-white px-5 py-3 flex justify-between items-center">
+            <div class="bg-slate-800 text-white px-5 py-3 flex flex-wrap justify-between items-center gap-2">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-list-check text-amber-400"></i>
                     <h2 class="font-bold text-base">ตารางรายการที่คีย์ทั้งหมด (ประวัติ & แก้ไขรายการ)</h2>
                 </div>
-                <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-full" id="historyCountText">0 รายการ</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs bg-indigo-600 text-white px-2.5 py-1 rounded-full font-medium" id="historyFilterBadge">แสดง: ทั้งหมด</span>
+                    <span class="text-xs bg-slate-700 text-slate-300 px-2.5 py-1 rounded-full" id="historyCountText">0 รายการ</span>
+                </div>
             </div>
 
             <div class="p-4">
@@ -376,6 +500,7 @@
                         <thead class="bg-slate-100 text-slate-600 uppercase text-xs sticky top-0">
                             <tr>
                                 <th class="py-2.5 px-3">เวลาที่บันทึก</th>
+                                <th class="py-2.5 px-3">ชื่อลูกค้า</th>
                                 <th class="py-2.5 px-3">ประเภท</th>
                                 <th class="py-2.5 px-3 text-center">หมายเลข</th>
                                 <th class="py-2.5 px-3 text-right">จำนวนเงิน (บาท)</th>
@@ -391,18 +516,351 @@
 
     </main>
 
-    <!-- Google Sheets Sync Script -->
+    <!-- Google Sheets Sync & Application Script -->
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyAbhdglJfourxmoCS5xvKpGIuFuyAjuWP-AklPxbqgrvLj9ijxdmM2Z_CZF3ej2vhG/exec";
 
+        // Global State
         let data2DTop = {};
         let data2DBottom = {};
         let data3DDirect = {};
         let data3DTod = {};
         let specialRules = [];
         let historyLogs = [];
+        let customerSettings = {}; // Store discount % per customer: { "ชื่อลูกค้า": 25 }
+        let selectedCustomerFilter = 'ALL';
         let isSyncing = false;
 
+        // UI Helpers: Toast & Confirm
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-emerald-600 text-white border-emerald-700',
+                error: 'bg-rose-600 text-white border-rose-700',
+                warning: 'bg-amber-500 text-slate-900 border-amber-600',
+                info: 'bg-slate-800 text-white border-slate-700'
+            };
+            const icons = {
+                success: 'fa-circle-check',
+                error: 'fa-circle-exclamation',
+                warning: 'fa-triangle-exclamation',
+                info: 'fa-circle-info'
+            };
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold transform transition-all duration-300 translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+            toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info} text-sm"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        function showConfirmModal(message, onConfirm) {
+            const modal = document.getElementById('confirmModal');
+            const msgEl = document.getElementById('confirmMessage');
+            const okBtn = document.getElementById('confirmOkBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
+
+            msgEl.textContent = message;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                okBtn.onclick = null;
+                cancelBtn.onclick = null;
+            };
+
+            cancelBtn.onclick = cleanup;
+            okBtn.onclick = () => {
+                cleanup();
+                onConfirm();
+            };
+        }
+
+        // Rebuild aggregated data dictionaries from historyLogs so customer filtering & deletions stay 100% consistent
+        function getAggregatedData(filterCustomer = 'ALL') {
+            const agg2DTop = {};
+            const agg2DBottom = {};
+            const agg3DDirect = {};
+            const agg3DTod = {};
+
+            historyLogs.forEach(item => {
+                const cust = item.customer || 'ลูกค้าทั่วไป';
+                if (filterCustomer !== 'ALL' && cust !== filterCustomer) return;
+
+                if (item.type === '2 ตัวบน') {
+                    agg2DTop[item.number] = (agg2DTop[item.number] || 0) + item.amount;
+                } else if (item.type === '2 ตัวล่าง') {
+                    agg2DBottom[item.number] = (agg2DBottom[item.number] || 0) + item.amount;
+                } else if (item.type === '3 ตัวตรง') {
+                    agg3DDirect[item.number] = (agg3DDirect[item.number] || 0) + item.amount;
+                } else if (item.type === '3 ตัวโต๊ด') {
+                    agg3DTod[item.number] = (agg3DTod[item.number] || 0) + item.amount;
+                }
+            });
+
+            return { agg2DTop, agg2DBottom, agg3DDirect, agg3DTod };
+        }
+
+        function syncGlobalDictionariesFromLogs() {
+            const { agg2DTop, agg2DBottom, agg3DDirect, agg3DTod } = getAggregatedData('ALL');
+            data2DTop = agg2DTop;
+            data2DBottom = agg2DBottom;
+            data3DDirect = agg3DDirect;
+            data3DTod = agg3DTod;
+        }
+
+        // Customer List & UI Sync
+        function updateCustomerDropdowns() {
+            const customerSet = new Set(['ลูกค้าทั่วไป']);
+            historyLogs.forEach(item => {
+                if (item.customer && item.customer.trim()) {
+                    customerSet.add(item.customer.trim());
+                }
+            });
+            Object.keys(customerSettings || {}).forEach(c => {
+                if (c.trim()) customerSet.add(c.trim());
+            });
+
+            const customers = Array.from(customerSet);
+
+            // Update datalist in Input form
+            const datalist = document.getElementById('customerDatalist');
+            if (datalist) {
+                datalist.innerHTML = customers.map(c => `<option value="${c}">`).join('');
+            }
+
+            // Update Filter Select in Summary Bar
+            const filterSelect = document.getElementById('customerFilterSelect');
+            if (filterSelect) {
+                const prevVal = selectedCustomerFilter;
+                filterSelect.innerHTML = `<option value="ALL">📊 แสดงรวมทุกคน (ยอดเจ้ามือทั้งหมด)</option>` +
+                    customers.map(c => `<option value="${c}">👤 ลูกค้า: ${c}</option>`).join('');
+                
+                if (prevVal === 'ALL' || customers.includes(prevVal)) {
+                    filterSelect.value = prevVal;
+                } else {
+                    selectedCustomerFilter = 'ALL';
+                    filterSelect.value = 'ALL';
+                }
+            }
+        }
+
+        function onCustomerInputChange() {
+            const custName = document.getElementById('inputCustomerName').value.trim() || 'ลูกค้าทั่วไป';
+            // Load saved discount for this customer if available
+            if (customerSettings[custName] !== undefined) {
+                document.getElementById('inputCustomerDiscount').value = customerSettings[custName];
+            }
+        }
+
+        function promptNewCustomer() {
+            const input = document.getElementById('inputCustomerName');
+            input.value = '';
+            input.focus();
+            showToast('พิมพ์ชื่อลูกค้าใหม่ได้เลยครับ', 'info');
+        }
+
+        function saveCustomerDiscountPreference() {
+            const custName = document.getElementById('inputCustomerName').value.trim() || 'ลูกค้าทั่วไป';
+            const disc = parseFloat(document.getElementById('inputCustomerDiscount').value) || 0;
+            customerSettings[custName] = disc;
+            saveToGoogleSheets();
+        }
+
+        function handleCustomerFilterChange() {
+            const select = document.getElementById('customerFilterSelect');
+            selectedCustomerFilter = select.value;
+
+            const labels = document.querySelectorAll('.filter-scope-label');
+            const badge = document.getElementById('historyFilterBadge');
+            const manageBox = document.getElementById('customerManageActions');
+
+            if (selectedCustomerFilter === 'ALL') {
+                labels.forEach(el => el.textContent = '(ทั้งหมด)');
+                if (badge) badge.textContent = 'แสดง: ทั้งหมด';
+                if (manageBox) manageBox.classList.add('hidden');
+            } else {
+                labels.forEach(el => el.textContent = `(${selectedCustomerFilter})`);
+                if (badge) badge.textContent = `แสดงเฉพาะ: ${selectedCustomerFilter}`;
+                if (manageBox) manageBox.classList.remove('hidden');
+                
+                // Sync input customer name & round title convenience
+                document.getElementById('inputCustomerName').value = selectedCustomerFilter;
+                onCustomerInputChange();
+            }
+
+            renderTables();
+        }
+
+        // Modal Helpers for Editing / Deleting Customer Bills & Single Entries
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function openRenameCustomerModal() {
+            if (selectedCustomerFilter === 'ALL') return;
+            const oldName = selectedCustomerFilter;
+            const modal = document.getElementById('editModal');
+            const titleEl = document.getElementById('editModalTitle');
+            const bodyEl = document.getElementById('editModalBody');
+            const saveBtn = document.getElementById('editModalSaveBtn');
+
+            titleEl.innerHTML = `<i class="fa-solid fa-user-pen text-amber-500"></i> แก้ไขชื่อลูกค้า`;
+            bodyEl.innerHTML = `
+                <p class="text-xs text-slate-500">เปลี่ยนชื่อของ <b>"${oldName}"</b> ทุกรายการและทุกบิลให้เป็นชื่อใหม่:</p>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อลูกค้าใหม่</label>
+                    <input type="text" id="renameCustomerInput" value="${oldName}" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => document.getElementById('renameCustomerInput')?.focus(), 50);
+
+            saveBtn.onclick = () => {
+                const newName = document.getElementById('renameCustomerInput').value.trim();
+                if (!newName) {
+                    showToast('กรุณากรอกชื่อลูกค้าใหม่', 'warning');
+                    return;
+                }
+                if (newName === oldName) {
+                    closeEditModal();
+                    return;
+                }
+
+                // Update all logs matching oldName
+                historyLogs.forEach(item => {
+                    if ((item.customer || 'ลูกค้าทั่วไป') === oldName) {
+                        item.customer = newName;
+                    }
+                });
+
+                // Transfer customer discount setting
+                if (customerSettings[oldName] !== undefined) {
+                    customerSettings[newName] = customerSettings[oldName];
+                    delete customerSettings[oldName];
+                }
+
+                selectedCustomerFilter = newName;
+                document.getElementById('inputCustomerName').value = newName;
+                closeEditModal();
+                updateCustomerDropdowns();
+                handleCustomerFilterChange();
+                saveToGoogleSheets();
+                showToast(`เปลี่ยนชื่อ "${oldName}" เป็น "${newName}" เรียบร้อยแล้ว`, 'success');
+            };
+        }
+
+        function deleteSelectedCustomerBill() {
+            if (selectedCustomerFilter === 'ALL') return;
+            const custName = selectedCustomerFilter;
+            const custLogs = historyLogs.filter(h => (h.customer || 'ลูกค้าทั่วไป') === custName);
+
+            showConfirmModal(
+                `คุณต้องการลบบิลของลูกค้า "${custName}" ทั้งหมด (${custLogs.length} รายการ) หรือไม่? ยอดซื้อจะถูกหักออกจากตารางรวมของเจ้ามือทันที`,
+                () => {
+                    historyLogs = historyLogs.filter(h => (h.customer || 'ลูกค้าทั่วไป') !== custName);
+                    delete customerSettings[custName];
+                    selectedCustomerFilter = 'ALL';
+                    document.getElementById('inputCustomerName').value = 'ลูกค้าทั่วไป';
+                    updateCustomerDropdowns();
+                    handleCustomerFilterChange();
+                    saveToGoogleSheets();
+                    showToast(`ลบบิลของ "${custName}" เรียบร้อยแล้ว`, 'success');
+                }
+            );
+        }
+
+        function openEditHistoryItemModal(id) {
+            const item = historyLogs.find(h => h.id === id);
+            if (!item) return;
+
+            const modal = document.getElementById('editModal');
+            const titleEl = document.getElementById('editModalTitle');
+            const bodyEl = document.getElementById('editModalBody');
+            const saveBtn = document.getElementById('editModalSaveBtn');
+
+            saveBtn.className = "px-5 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition shadow";
+            saveBtn.textContent = "บันทึกการแก้ไข";
+
+            titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square text-indigo-600"></i> แก้ไขรายการคีย์`;
+            bodyEl.innerHTML = `
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อลูกค้า</label>
+                    <input type="text" id="editItemCustomer" list="customerDatalist" value="${item.customer || 'ลูกค้าทั่วไป'}" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">ประเภท</label>
+                        <select id="editItemType" class="w-full px-2 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="2 ตัวบน" ${item.type === '2 ตัวบน' ? 'selected' : ''}>2 ตัวบน</option>
+                            <option value="2 ตัวล่าง" ${item.type === '2 ตัวล่าง' ? 'selected' : ''}>2 ตัวล่าง</option>
+                            <option value="3 ตัวตรง" ${item.type === '3 ตัวตรง' ? 'selected' : ''}>3 ตัวตรง</option>
+                            <option value="3 ตัวโต๊ด" ${item.type === '3 ตัวโต๊ด' ? 'selected' : ''}>3 ตัวโต๊ด</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">หมายเลข</label>
+                        <input type="text" id="editItemNumber" maxlength="3" value="${item.number}" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-mono font-bold text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">จำนวนเงิน (฿)</label>
+                        <input type="number" id="editItemAmount" min="1" value="${item.amount}" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-bold text-right text-emerald-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                    </div>
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            saveBtn.onclick = () => {
+                const newCust = document.getElementById('editItemCustomer').value.trim() || 'ลูกค้าทั่วไป';
+                const newType = document.getElementById('editItemType').value;
+                let newNum = document.getElementById('editItemNumber').value.trim();
+                const newAmount = parseFloat(document.getElementById('editItemAmount').value) || 0;
+
+                if (!newNum || newAmount <= 0) {
+                    showToast('กรุณาระบุหมายเลขและจำนวนเงินให้ถูกต้อง', 'warning');
+                    return;
+                }
+                if ((newType === '2 ตัวบน' || newType === '2 ตัวล่าง') && newNum.length === 1) {
+                    newNum = '0' + newNum;
+                }
+
+                const typeCatMap = {
+                    '2 ตัวบน': '2DTop',
+                    '2 ตัวล่าง': '2DBottom',
+                    '3 ตัวตรง': '3DDirect',
+                    '3 ตัวโต๊ด': '3DTod'
+                };
+
+                item.customer = newCust;
+                item.type = newType;
+                item.number = newNum;
+                item.amount = newAmount;
+                item.statusTag = getRuleStatusTag(newNum, typeCatMap[newType] || '2DTop');
+
+                closeEditModal();
+                updateCustomerDropdowns();
+                saveToGoogleSheets();
+                renderTables();
+                showToast('แก้ไขรายการเรียบร้อยแล้ว', 'success');
+            };
+        }
+
+        // Google Sheets Sync Functions
         async function fetchFromGoogleSheets() {
             if (isSyncing) return;
             isSyncing = true;
@@ -410,12 +868,19 @@
                 const response = await fetch(GOOGLE_SCRIPT_URL);
                 const json = await response.json();
                 if (json && json.timestamp) {
-                    data2DTop = json.data2DTop || {};
-                    data2DBottom = json.data2DBottom || {};
-                    data3DDirect = json.data3DDirect || {};
-                    data3DTod = json.data3DTod || {};
                     specialRules = json.specialRules || [];
                     historyLogs = json.historyLogs || [];
+                    customerSettings = json.customerSettings || {};
+
+                    // Support legacy logs without customer/billNo or without historyLogs
+                    if (historyLogs.length === 0 && (json.data2DTop || json.data2DBottom || json.data3DDirect || json.data3DTod)) {
+                        data2DTop = json.data2DTop || {};
+                        data2DBottom = json.data2DBottom || {};
+                        data3DDirect = json.data3DDirect || {};
+                        data3DTod = json.data3DTod || {};
+                    } else {
+                        syncGlobalDictionariesFromLogs();
+                    }
 
                     if (json.limits) {
                         if (document.activeElement.id !== 'limit2DTop') document.getElementById('limit2DTop').value = json.limits.l2DTop || 500;
@@ -424,6 +889,7 @@
                         if (document.activeElement.id !== 'limit3DTod') document.getElementById('limit3DTod').value = json.limits.l3DTod || 50;
                     }
 
+                    updateCustomerDropdowns();
                     renderRulesList();
                     renderTables();
                     updateSyncStatusBadge(true, "ซิงค์กับ Google Sheets เรียบร้อย");
@@ -437,6 +903,7 @@
         }
 
         async function saveToGoogleSheets() {
+            syncGlobalDictionariesFromLogs();
             const payload = {
                 timestamp: Date.now(),
                 data2DTop,
@@ -445,6 +912,7 @@
                 data3DTod,
                 specialRules,
                 historyLogs,
+                customerSettings,
                 limits: {
                     l2DTop: parseFloat(document.getElementById('limit2DTop').value) || 500,
                     l2DBottom: parseFloat(document.getElementById('limit2DBottom').value) || 500,
@@ -455,7 +923,6 @@
 
             updateSyncStatusBadge(true, "กำลังบันทึกข้อมูลไปที่ Google Sheets...");
             try {
-                // ใช้ no-cors หรือ POST ปกติผ่าน text/plain เพื่อป้องกัน CORS issue จาก Google Apps Script
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -471,6 +938,7 @@
 
         function forceSyncNow() {
             fetchFromGoogleSheets();
+            showToast('กำลังซิงค์ข้อมูลล่าสุด...', 'info');
         }
 
         function triggerAutoSave() {
@@ -502,6 +970,7 @@
             }
         }
 
+        // Special Rules Logic
         function toggleRuleMaxInput() {
             const status = document.getElementById('ruleStatus').value;
             const container = document.getElementById('ruleMaxContainer');
@@ -517,7 +986,7 @@
             const includeReverse = document.getElementById('ruleIncludeReverse').checked;
 
             if (!num) {
-                alert('กรุณาระบุหมายเลข');
+                showToast('กรุณาระบุหมายเลข', 'warning');
                 return;
             }
 
@@ -540,6 +1009,7 @@
             saveToGoogleSheets();
             renderRulesList();
             renderTables();
+            showToast('เพิ่มกฎเลขอั้น/จ่ายครึ่งเรียบร้อย', 'success');
         }
 
         function deleteSpecialRule(id) {
@@ -610,12 +1080,17 @@
             return 'NORMAL';
         }
 
+        // Form Submissions
         function handleFormSubmit2D(event) {
             event.preventDefault();
             const numInput = document.getElementById('inputNum2D');
             const topPriceInput = document.getElementById('inputPrice2DTop');
             const bottomPriceInput = document.getElementById('inputPrice2DBottom');
             const isReverse = document.getElementById('input2DReverse').checked;
+            
+            const customerName = document.getElementById('inputCustomerName').value.trim() || 'ลูกค้าทั่วไป';
+            const discountPct = parseFloat(document.getElementById('inputCustomerDiscount').value) || 0;
+            customerSettings[customerName] = discountPct;
 
             let num = numInput.value.trim();
             if (num.length === 1) num = '0' + num;
@@ -623,7 +1098,7 @@
             const bottomPrice = parseFloat(bottomPriceInput.value) || 0;
 
             if (topPrice === 0 && bottomPrice === 0) {
-                alert('กรุณาระบุจำนวนเงินอย่างน้อย 1 ช่อง');
+                showToast('กรุณาระบุจำนวนเงินอย่างน้อย 1 ช่อง', 'warning');
                 return;
             }
 
@@ -633,18 +1108,20 @@
                 if (revNum !== num) numsToProcess.push(revNum);
             }
 
+            syncGlobalDictionariesFromLogs();
+
             for (const n of numsToProcess) {
                 if (topPrice > 0) {
                     const check = checkRuleViolation(n, '2DTop', data2DTop[n] || 0, topPrice);
                     if (check.blocked) {
-                        alert(`ไม่สามารถบันทึกได้! เลข ${n} (2 ตัวบน) เป็นเลขอั้นเกินเพดาน (${check.rule.maxAmount} บาท)`);
+                        showToast(`บันทึกไม่ได้! เลข ${n} (2 ตัวบน) อั้นเกินเพดาน (${check.rule.maxAmount} บาท)`, 'error');
                         return;
                     }
                 }
                 if (bottomPrice > 0) {
                     const check = checkRuleViolation(n, '2DBottom', data2DBottom[n] || 0, bottomPrice);
                     if (check.blocked) {
-                        alert(`ไม่สามารถบันทึกได้! เลข ${n} (2 ตัวล่าง) เป็นเลขอั้นเกินเพดาน (${check.rule.maxAmount} บาท)`);
+                        showToast(`บันทึกไม่ได้! เลข ${n} (2 ตัวล่าง) อั้นเกินเพดาน (${check.rule.maxAmount} บาท)`, 'error');
                         return;
                     }
                 }
@@ -652,12 +1129,10 @@
 
             numsToProcess.forEach(n => {
                 if (topPrice > 0) {
-                    data2DTop[n] = (data2DTop[n] || 0) + topPrice;
-                    addHistoryLog('2 ตัวบน', n, topPrice, getRuleStatusTag(n, '2DTop'));
+                    addHistoryLog('2 ตัวบน', n, topPrice, getRuleStatusTag(n, '2DTop'), customerName);
                 }
                 if (bottomPrice > 0) {
-                    data2DBottom[n] = (data2DBottom[n] || 0) + bottomPrice;
-                    addHistoryLog('2 ตัวล่าง', n, bottomPrice, getRuleStatusTag(n, '2DBottom'));
+                    addHistoryLog('2 ตัวล่าง', n, bottomPrice, getRuleStatusTag(n, '2DBottom'), customerName);
                 }
             });
 
@@ -667,8 +1142,10 @@
             document.getElementById('input2DReverse').checked = false;
             numInput.focus();
 
+            updateCustomerDropdowns();
             saveToGoogleSheets();
             renderTables();
+            showToast(`บันทึกเลข ${numsToProcess.join(', ')} (${customerName})`, 'success');
         }
 
         function getPermutations(str) {
@@ -691,29 +1168,34 @@
             const todPriceInput = document.getElementById('inputPrice3DTod');
             const is6Perm = document.getElementById('input6Permutations').checked;
 
+            const customerName = document.getElementById('inputCustomerName').value.trim() || 'ลูกค้าทั่วไป';
+            const discountPct = parseFloat(document.getElementById('inputCustomerDiscount').value) || 0;
+            customerSettings[customerName] = discountPct;
+
             const num = numInput.value.trim();
             const directPrice = parseFloat(directPriceInput.value) || 0;
             const todPrice = parseFloat(todPriceInput.value) || 0;
 
             if (directPrice === 0 && todPrice === 0) {
-                alert('กรุณาระบุจำนวนเงินอย่างน้อย 1 ช่อง');
+                showToast('กรุณาระบุจำนวนเงินอย่างน้อย 1 ช่อง', 'warning');
                 return;
             }
 
             let numsToProcess = is6Perm ? getPermutations(num) : [num];
+            syncGlobalDictionariesFromLogs();
 
             for (const n of numsToProcess) {
                 if (directPrice > 0) {
                     const check = checkRuleViolation(n, '3DDirect', data3DDirect[n] || 0, directPrice);
                     if (check.blocked) {
-                        alert(`ไม่สามารถบันทึกได้! เลข ${n} (3 ตรง) เป็นเลขอั้นเกินเพดาน (${check.rule.maxAmount} บาท)`);
+                        showToast(`บันทึกไม่ได้! เลข ${n} (3 ตรง) อั้นเกินเพดาน (${check.rule.maxAmount} บาท)`, 'error');
                         return;
                     }
                 }
                 if (todPrice > 0) {
                     const check = checkRuleViolation(n, '3DTod', data3DTod[n] || 0, todPrice);
                     if (check.blocked) {
-                        alert(`ไม่สามารถบันทึกได้! เลข ${n} (3 โต๊ด) เป็นเลขอั้นเกินเพดาน (${check.rule.maxAmount} บาท)`);
+                        showToast(`บันทึกไม่ได้! เลข ${n} (3 โต๊ด) อั้นเกินเพดาน (${check.rule.maxAmount} บาท)`, 'error');
                         return;
                     }
                 }
@@ -721,12 +1203,10 @@
 
             numsToProcess.forEach(n => {
                 if (directPrice > 0) {
-                    data3DDirect[n] = (data3DDirect[n] || 0) + directPrice;
-                    addHistoryLog('3 ตัวตรง', n, directPrice, getRuleStatusTag(n, '3DDirect'));
+                    addHistoryLog('3 ตัวตรง', n, directPrice, getRuleStatusTag(n, '3DDirect'), customerName);
                 }
                 if (todPrice > 0) {
-                    data3DTod[n] = (data3DTod[n] || 0) + todPrice;
-                    addHistoryLog('3 ตัวโต๊ด', n, todPrice, getRuleStatusTag(n, '3DTod'));
+                    addHistoryLog('3 ตัวโต๊ด', n, todPrice, getRuleStatusTag(n, '3DTod'), customerName);
                 }
             });
 
@@ -736,14 +1216,17 @@
             document.getElementById('input6Permutations').checked = false;
             numInput.focus();
 
+            updateCustomerDropdowns();
             saveToGoogleSheets();
             renderTables();
+            showToast(`บันทึกเลข ${numsToProcess.join(', ')} (${customerName})`, 'success');
         }
 
-        function addHistoryLog(type, num, amount, statusTag) {
+        function addHistoryLog(type, num, amount, statusTag, customer) {
             historyLogs.unshift({
                 id: Date.now() + Math.random(),
                 time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                customer: customer || 'ลูกค้าทั่วไป',
                 type: type,
                 number: num,
                 amount: amount,
@@ -752,26 +1235,23 @@
         }
 
         function deleteHistoryItem(id) {
-            const item = historyLogs.find(h => h.id === id);
-            if (!item) return;
-
-            if (item.type === '2 ตัวบน') data2DTop[item.number] = Math.max(0, (data2DTop[item.number] || 0) - item.amount);
-            else if (item.type === '2 ตัวล่าง') data2DBottom[item.number] = Math.max(0, (data2DBottom[item.number] || 0) - item.amount);
-            else if (item.type === '3 ตัวตรง') data3DDirect[item.number] = Math.max(0, (data3DDirect[item.number] || 0) - item.amount);
-            else if (item.type === '3 ตัวโต๊ด') data3DTod[item.number] = Math.max(0, (data3DTod[item.number] || 0) - item.amount);
-
             historyLogs = historyLogs.filter(h => h.id !== id);
+            updateCustomerDropdowns();
             saveToGoogleSheets();
             renderTables();
+            showToast('ลบรายการเรียบร้อยแล้ว', 'info');
         }
 
+        // Render Tables (Respects selectedCustomerFilter)
         function renderTables() {
-            render2DGrid('Top', data2DTop, 'limit2DTop');
-            render2DGrid('Bottom', data2DBottom, 'limit2DBottom');
-            render3DTable('Direct');
-            render3DTable('Tod');
+            const { agg2DTop, agg2DBottom, agg3DDirect, agg3DTod } = getAggregatedData(selectedCustomerFilter);
+
+            render2DGrid('Top', agg2DTop, 'limit2DTop');
+            render2DGrid('Bottom', agg2DBottom, 'limit2DBottom');
+            render3DTable('Direct', agg3DDirect);
+            render3DTable('Tod', agg3DTod);
             renderHistoryTable();
-            updateSummaries();
+            updateSummaries(agg2DTop, agg2DBottom, agg3DDirect, agg3DTod);
         }
 
         function render2DGrid(type, dataObj, limitInputId) {
@@ -805,8 +1285,9 @@
             }
         }
 
-        function render3DTable(type) {
-            const dataObj = type === 'Direct' ? data3DDirect : data3DTod;
+        function render3DTable(type, customDataObj = null) {
+            const { agg3DDirect, agg3DTod } = getAggregatedData(selectedCustomerFilter);
+            const dataObj = customDataObj || (type === 'Direct' ? agg3DDirect : agg3DTod);
             const limitInput = document.getElementById(`limit3D${type}`);
             const limit = limitInput ? (parseFloat(limitInput.value) || 0) : 0;
             const searchVal = (document.getElementById(`search3D${type}`)?.value || '').trim();
@@ -848,29 +1329,40 @@
         }
 
         function clearSingle3D(type, num) {
-            if (type === 'Direct') delete data3DDirect[num];
-            else delete data3DTod[num];
+            const targetTypeLabel = type === 'Direct' ? '3 ตัวตรง' : '3 ตัวโต๊ด';
+            historyLogs = historyLogs.filter(h => {
+                const matchNumAndType = h.number === num && h.type === targetTypeLabel;
+                if (!matchNumAndType) return true;
+                if (selectedCustomerFilter === 'ALL') return false;
+                return (h.customer || 'ลูกค้าทั่วไป') !== selectedCustomerFilter;
+            });
 
-            historyLogs = historyLogs.filter(h => !(h.number === num && (type === 'Direct' ? h.type === '3 ตัวตรง' : h.type === '3 ตัวโต๊ด')));
+            updateCustomerDropdowns();
             saveToGoogleSheets();
             renderTables();
+            showToast(`ลบเลข ${num} (${targetTypeLabel}) เรียบร้อยแล้ว`, 'info');
         }
 
         function renderHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
             const countText = document.getElementById('historyCountText');
-            if (countText) countText.innerText = `${historyLogs.length} รายการ`;
 
+            const filteredLogs = selectedCustomerFilter === 'ALL'
+                ? historyLogs
+                : historyLogs.filter(h => (h.customer || 'ลูกค้าทั่วไป') === selectedCustomerFilter);
+
+            if (countText) countText.innerText = `${filteredLogs.length} รายการ`;
             if (!tbody) return;
 
-            if (historyLogs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-400 text-xs">ยังไม่มีประวัติรายการที่คีย์</td></tr>`;
+            if (filteredLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-400 text-xs">ยังไม่มีประวัติรายการที่คีย์</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = historyLogs.map(item => `
+            tbody.innerHTML = filteredLogs.map(item => `
                 <tr class="hover:bg-slate-50 border-b border-slate-100">
                     <td class="py-2 px-3 text-xs text-slate-500 font-mono">${item.time}</td>
+                    <td class="py-2 px-3 text-xs font-bold text-indigo-700">${item.customer || 'ลูกค้าทั่วไป'}</td>
                     <td class="py-2 px-3 text-xs font-bold text-slate-700">${item.type}</td>
                     <td class="py-2 px-3 text-center font-mono font-bold text-sm text-indigo-900">${item.number}</td>
                     <td class="py-2 px-3 text-right font-semibold text-slate-800">${item.amount.toLocaleString()} ฿</td>
@@ -883,8 +1375,11 @@
                             ${item.statusTag === 'BLOCKED' ? 'เลขอั้น' : item.statusTag === 'HALF' ? 'จ่ายครึ่งราคา' : 'จ่ายปกติ'}
                         </span>
                     </td>
-                    <td class="py-2 px-3 text-center">
-                        <button onclick="deleteHistoryItem(${item.id})" class="text-slate-400 hover:text-red-600 text-xs px-2 py-1">
+                    <td class="py-2 px-3 text-center whitespace-nowrap">
+                        <button onclick="openEditHistoryItemModal(${item.id})" title="แก้ไขรายการนี้" class="text-slate-400 hover:text-indigo-600 text-xs px-1.5 py-1">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteHistoryItem(${item.id})" title="ลบรายการนี้" class="text-slate-400 hover:text-red-600 text-xs px-1.5 py-1">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </td>
@@ -892,11 +1387,11 @@
             `).join('');
         }
 
-        function updateSummaries() {
-            const sum2DTop = Object.values(data2DTop || {}).reduce((a, b) => a + b, 0);
-            const sum2DBottom = Object.values(data2DBottom || {}).reduce((a, b) => a + b, 0);
-            const sum3DDirect = Object.values(data3DDirect || {}).reduce((a, b) => a + b, 0);
-            const sum3DTod = Object.values(data3DTod || {}).reduce((a, b) => a + b, 0);
+        function updateSummaries(agg2DTop, agg2DBottom, agg3DDirect, agg3DTod) {
+            const sum2DTop = Object.values(agg2DTop || {}).reduce((a, b) => a + b, 0);
+            const sum2DBottom = Object.values(agg2DBottom || {}).reduce((a, b) => a + b, 0);
+            const sum3DDirect = Object.values(agg3DDirect || {}).reduce((a, b) => a + b, 0);
+            const sum3DTod = Object.values(agg3DTod || {}).reduce((a, b) => a + b, 0);
             const grandTotal = sum2DTop + sum2DBottom + sum3DDirect + sum3DTod;
 
             document.getElementById('total2DTopAmount').innerText = `${sum2DTop.toLocaleString()} ฿`;
@@ -920,7 +1415,643 @@
             });
         }
 
+        // =========================================================================
+        // INDIVIDUAL CUSTOMER EXCEL EXPORT (COLORED & DISPLAYS ALL PURCHASED NUMBERS)
+        // =========================================================================
+        function is3DTodMatch(betNum, win3D) {
+            if (!betNum || !win3D || betNum.length !== 3 || win3D.length !== 3) return false;
+            const s1 = betNum.split('').sort().join('');
+            const s2 = win3D.split('').sort().join('');
+            return s1 === s2;
+        }
+
+        function exportCustomerBillExcel() {
+            // Determine target customer: either selected from filter dropdown, or currently typed in input box
+            let targetCustomer = selectedCustomerFilter;
+            if (targetCustomer === 'ALL') {
+                targetCustomer = document.getElementById('inputCustomerName').value.trim() || 'ลูกค้าทั่วไป';
+            }
+
+            const custLogs = historyLogs.filter(h => (h.customer || 'ลูกค้าทั่วไป') === targetCustomer);
+            if (custLogs.length === 0) {
+                showToast(`ไม่พบข้อมูลรายการซื้อของ "${targetCustomer}"`, 'warning');
+                return;
+            }
+
+            const roundTitle = document.getElementById('exportRoundTitle').value.trim() || 'หวยไทย รอบปกติ';
+            const winTop3D = document.getElementById('winningTop3D').value.trim();
+            const winBottom2D = document.getElementById('winningBottom2D').value.trim();
+            const winTop2D = winTop3D.length === 3 ? winTop3D.slice(1) : '';
+            const discountPct = customerSettings[targetCustomer] !== undefined
+                ? customerSettings[targetCustomer]
+                : (parseFloat(document.getElementById('inputCustomerDiscount').value) || 0);
+
+            // Standard payout rates (Half-pay rule cuts payout in half)
+            const PAYOUT_RATES = {
+                '3 ตัวตรง': 900,
+                '3 ตัวโต๊ด': 150,
+                '2 ตัวบน': 90,
+                '2 ตัวล่าง': 90
+            };
+
+            // Aggregate purchased numbers per category for this customer (1 customer = 1 bill)
+            const list3DDirect = {}; // { "123": { amount: 50, isHalf: false } }
+            const list3DTod = {};
+            const list2DTop = {};
+            const list2DBottom = {};
+
+            custLogs.forEach(item => {
+                const targetMap =
+                    item.type === '3 ตัวตรง' ? list3DDirect :
+                    item.type === '3 ตัวโต๊ด' ? list3DTod :
+                    item.type === '2 ตัวบน' ? list2DTop :
+                    list2DBottom;
+
+                if (!targetMap[item.number]) {
+                    targetMap[item.number] = { amount: 0, isHalf: item.statusTag === 'HALF' };
+                }
+                targetMap[item.number].amount += item.amount;
+                if (item.statusTag === 'HALF') targetMap[item.number].isHalf = true;
+            });
+
+            const arr3DDirect = Object.keys(list3DDirect).sort().map(num => ({ num, ...list3DDirect[num] }));
+            const arr3DTod = Object.keys(list3DTod).sort().map(num => ({ num, ...list3DTod[num] }));
+            const arr2DTop = Object.keys(list2DTop).sort().map(num => ({ num, ...list2DTop[num] }));
+            const arr2DBottom = Object.keys(list2DBottom).sort().map(num => ({ num, ...list2DBottom[num] }));
+
+            // Format Thai Date
+            const thaiMonths = [
+                "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+                "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+            ];
+            const now = new Date();
+            const thaiDateStr = `${now.getDate()} ${thaiMonths[now.getMonth()]} ${now.getFullYear() + 543}`;
+
+            // Cell Styles Definition (xlsx-js-style)
+            const thinBorder = {
+                top: { style: "thin", color: { rgb: "334155" } },
+                bottom: { style: "thin", color: { rgb: "334155" } },
+                left: { style: "thin", color: { rgb: "334155" } },
+                right: { style: "thin", color: { rgb: "334155" } }
+            };
+
+            const styles = {
+                redBanner: {
+                    fill: { fgColor: { rgb: "DC2626" } },
+                    font: { name: "Tahoma", sz: 14, bold: true, color: { rgb: "FDE047" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                dateBox: {
+                    fill: { fgColor: { rgb: "FFFFFF" } },
+                    font: { name: "Tahoma", sz: 12, bold: true, color: { rgb: "0F172A" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                winNumBox: {
+                    fill: { fgColor: { rgb: "FEF9C3" } },
+                    font: { name: "Tahoma", sz: 16, bold: true, color: { rgb: "B91C1C" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                blueHeader: {
+                    fill: { fgColor: { rgb: "1D4ED8" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                subHeader3DDirect: {
+                    fill: { fgColor: { rgb: "DBEAFE" } },
+                    font: { name: "Tahoma", sz: 10, bold: true, color: { rgb: "1E3A8A" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                subHeader3DTod: {
+                    fill: { fgColor: { rgb: "E0E7FF" } },
+                    font: { name: "Tahoma", sz: 10, bold: true, color: { rgb: "312E81" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                subHeader2DTop: {
+                    fill: { fgColor: { rgb: "DCFCE7" } },
+                    font: { name: "Tahoma", sz: 10, bold: true, color: { rgb: "14532D" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                subHeader2DBottom: {
+                    fill: { fgColor: { rgb: "FEF3C7" } },
+                    font: { name: "Tahoma", sz: 10, bold: true, color: { rgb: "78350F" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                cellIndex: {
+                    fill: { fgColor: { rgb: "F8FAFC" } },
+                    font: { name: "Tahoma", sz: 10, bold: true, color: { rgb: "475569" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                cellNum3DDirect: {
+                    fill: { fgColor: { rgb: "EFF6FF" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "1E40AF" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                cellAmt3DDirect: {
+                    fill: { fgColor: { rgb: "EFF6FF" } },
+                    font: { name: "Tahoma", sz: 11, bold: false, color: { rgb: "0F172A" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                cellNum3DTod: {
+                    fill: { fgColor: { rgb: "EEF2FF" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "3730A3" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                cellAmt3DTod: {
+                    fill: { fgColor: { rgb: "EEF2FF" } },
+                    font: { name: "Tahoma", sz: 11, bold: false, color: { rgb: "0F172A" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                cellNum2DTop: {
+                    fill: { fgColor: { rgb: "F0FDF4" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "166534" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                cellAmt2DTop: {
+                    fill: { fgColor: { rgb: "F0FDF4" } },
+                    font: { name: "Tahoma", sz: 11, bold: false, color: { rgb: "0F172A" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                cellNum2DBottom: {
+                    fill: { fgColor: { rgb: "FFFBEB" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "92400E" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                cellAmt2DBottom: {
+                    fill: { fgColor: { rgb: "FFFBEB" } },
+                    font: { name: "Tahoma", sz: 11, bold: false, color: { rgb: "0F172A" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                cellWinner: {
+                    fill: { fgColor: { rgb: "22C55E" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                sumRedHeader: {
+                    fill: { fgColor: { rgb: "DC2626" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                sumRedValue: {
+                    fill: { fgColor: { rgb: "FEE2E2" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "991B1B" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                discountPctBox: {
+                    fill: { fgColor: { rgb: "DC2626" } },
+                    font: { name: "Tahoma", sz: 14, bold: true, color: { rgb: "FFFFFF" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                creamHighlight: {
+                    fill: { fgColor: { rgb: "FEF3C7" } },
+                    font: { name: "Tahoma", sz: 13, bold: true, color: { rgb: "0F172A" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                summaryLabel: {
+                    fill: { fgColor: { rgb: "F1F5F9" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "1E293B" } },
+                    alignment: { horizontal: "left", vertical: "center" },
+                    border: thinBorder
+                },
+                summaryVal: {
+                    fill: { fgColor: { rgb: "FFFFFF" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "0F172A" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                winGreenRow: {
+                    fill: { fgColor: { rgb: "22C55E" } },
+                    font: { name: "Tahoma", sz: 12, bold: true, color: { rgb: "052E16" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                netSettleBox: {
+                    fill: { fgColor: { rgb: "FFFFFF" } },
+                    font: { name: "Tahoma", sz: 14, bold: true, color: { rgb: "DC2626" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                }
+            };
+
+            const makeCell = (v, s, t = null) => {
+                const cell = { v: v, s: s };
+                if (t) cell.t = t;
+                else if (typeof v === 'number') cell.t = 'n';
+                else cell.t = 's';
+                return cell;
+            };
+
+            // Calculate Category Sums & Winnings
+            let sum3DDirect = 0, winAmt3DDirect = 0;
+            arr3DDirect.forEach(item => {
+                sum3DDirect += item.amount;
+                if (winTop3D && item.num === winTop3D) {
+                    winAmt3DDirect += item.amount * PAYOUT_RATES['3 ตัวตรง'] * (item.isHalf ? 0.5 : 1);
+                }
+            });
+
+            let sum3DTod = 0, winAmt3DTod = 0;
+            arr3DTod.forEach(item => {
+                sum3DTod += item.amount;
+                if (winTop3D && is3DTodMatch(item.num, winTop3D)) {
+                    winAmt3DTod += item.amount * PAYOUT_RATES['3 ตัวโต๊ด'] * (item.isHalf ? 0.5 : 1);
+                }
+            });
+
+            let sum2DTop = 0, winAmt2DTop = 0;
+            arr2DTop.forEach(item => {
+                sum2DTop += item.amount;
+                if (winTop2D && item.num === winTop2D) {
+                    winAmt2DTop += item.amount * PAYOUT_RATES['2 ตัวบน'] * (item.isHalf ? 0.5 : 1);
+                }
+            });
+
+            let sum2DBottom = 0, winAmt2DBottom = 0;
+            arr2DBottom.forEach(item => {
+                sum2DBottom += item.amount;
+                if (winBottom2D && item.num === winBottom2D) {
+                    winAmt2DBottom += item.amount * PAYOUT_RATES['2 ตัวล่าง'] * (item.isHalf ? 0.5 : 1);
+                }
+            });
+
+            const grandTotalBuy = sum3DDirect + sum3DTod + sum2DTop + sum2DBottom;
+            const discountAmount = Math.round(grandTotalBuy * (discountPct / 100));
+            const netAfterDiscount = grandTotalBuy - discountAmount;
+            const totalWinnings = winAmt3DDirect + winAmt3DTod + winAmt2DTop + winAmt2DBottom;
+            const netSettlement = totalWinnings - netAfterDiscount;
+
+            // Build Styled Rows Array (9 Columns: A to I)
+            // Col A: ลำดับ | B-C: 3 ตัวตรง (เลข / บาท) | D-E: 3 ตัวโต๊ด (เลข / บาท) | F-G: 2 ตัวบน (เลข / บาท) | H-I: 2 ตัวล่าง (เลข / บาท)
+            const sheetRows = [];
+
+            // Row 0: Red Top Banner
+            sheetRows.push([
+                makeCell(`${targetCustomer} - ${roundTitle}`, styles.redBanner),
+                makeCell("", styles.redBanner), makeCell("", styles.redBanner),
+                makeCell("", styles.redBanner), makeCell("", styles.redBanner),
+                makeCell("", styles.redBanner), makeCell("", styles.redBanner),
+                makeCell("", styles.redBanner), makeCell("", styles.redBanner)
+            ]);
+
+            // Row 1: Date & Winning Results Banner
+            sheetRows.push([
+                makeCell(thaiDateStr, styles.dateBox),
+                makeCell("", styles.dateBox),
+                makeCell("", styles.dateBox),
+                makeCell(winTop3D ? `บน: ${winTop3D}` : "ผลบน: -", styles.winNumBox),
+                makeCell("", styles.winNumBox),
+                makeCell("", styles.winNumBox),
+                makeCell(winBottom2D ? `ล่าง: ${winBottom2D}` : "ผลล่าง: -", styles.winNumBox),
+                makeCell("", styles.winNumBox),
+                makeCell("", styles.winNumBox)
+            ]);
+
+            // Row 2: Category Group Headers (Blue)
+            sheetRows.push([
+                makeCell("ลำดับ", styles.blueHeader),
+                makeCell("3 ตัวตรง", styles.blueHeader), makeCell("", styles.blueHeader),
+                makeCell("3 ตัวโต๊ด", styles.blueHeader), makeCell("", styles.blueHeader),
+                makeCell("2 ตัวบน", styles.blueHeader), makeCell("", styles.blueHeader),
+                makeCell("2 ตัวล่าง", styles.blueHeader), makeCell("", styles.blueHeader)
+            ]);
+
+            // Row 3: Sub-headers (เลข / ยอดซื้อ)
+            sheetRows.push([
+                makeCell("#", styles.blueHeader),
+                makeCell("เลข", styles.subHeader3DDirect), makeCell("ยอด (บาท)", styles.subHeader3DDirect),
+                makeCell("เลข", styles.subHeader3DTod), makeCell("ยอด (บาท)", styles.subHeader3DTod),
+                makeCell("เลข", styles.subHeader2DTop), makeCell("ยอด (บาท)", styles.subHeader2DTop),
+                makeCell("เลข", styles.subHeader2DBottom), makeCell("ยอด (บาท)", styles.subHeader2DBottom)
+            ]);
+
+            // Data Rows: Display every purchased number in its exact category column
+            const maxRows = Math.max(10, arr3DDirect.length, arr3DTod.length, arr2DTop.length, arr2DBottom.length);
+
+            for (let i = 0; i < maxRows; i++) {
+                const d3Dir = arr3DDirect[i];
+                const d3Tod = arr3DTod[i];
+                const d2Top = arr2DTop[i];
+                const d2Bot = arr2DBottom[i];
+
+                const isWinDir = d3Dir && winTop3D && d3Dir.num === winTop3D;
+                const isWinTod = d3Tod && winTop3D && is3DTodMatch(d3Tod.num, winTop3D);
+                const isWinTop = d2Top && winTop2D && d2Top.num === winTop2D;
+                const isWinBot = d2Bot && winBottom2D && d2Bot.num === winBottom2D;
+
+                sheetRows.push([
+                    makeCell(i + 1, styles.cellIndex),
+                    // 3 ตัวตรง
+                    makeCell(d3Dir ? (d3Dir.isHalf ? `${d3Dir.num} (ครึ่ง)` : d3Dir.num) : "", isWinDir ? styles.cellWinner : styles.cellNum3DDirect),
+                    makeCell(d3Dir ? d3Dir.amount : "", styles.cellAmt3DDirect),
+                    // 3 ตัวโต๊ด
+                    makeCell(d3Tod ? (d3Tod.isHalf ? `${d3Tod.num} (ครึ่ง)` : d3Tod.num) : "", isWinTod ? styles.cellWinner : styles.cellNum3DTod),
+                    makeCell(d3Tod ? d3Tod.amount : "", styles.cellAmt3DTod),
+                    // 2 ตัวบน
+                    makeCell(d2Top ? (d2Top.isHalf ? `${d2Top.num} (ครึ่ง)` : d2Top.num) : "", isWinTop ? styles.cellWinner : styles.cellNum2DTop),
+                    makeCell(d2Top ? d2Top.amount : "", styles.cellAmt2DTop),
+                    // 2 ตัวล่าง
+                    makeCell(d2Bot ? (d2Bot.isHalf ? `${d2Bot.num} (ครึ่ง)` : d2Bot.num) : "", isWinBot ? styles.cellWinner : styles.cellNum2DBottom),
+                    makeCell(d2Bot ? d2Bot.amount : "", styles.cellAmt2DBottom)
+                ]);
+            }
+
+            const sumStartRowIdx = sheetRows.length;
+
+            // Category Subtotal Row
+            sheetRows.push([
+                makeCell("รวม", styles.sumRedHeader),
+                makeCell("รวม 3 ตรง", styles.sumRedHeader),
+                makeCell(sum3DDirect, styles.sumRedValue),
+                makeCell("รวม 3 โต๊ด", styles.sumRedHeader),
+                makeCell(sum3DTod, styles.sumRedValue),
+                makeCell("รวม 2 บน", styles.sumRedHeader),
+                makeCell(sum2DTop, styles.sumRedValue),
+                makeCell("รวม 2 ล่าง", styles.sumRedHeader),
+                makeCell(sum2DBottom, styles.sumRedValue)
+            ]);
+
+            // Category Winning Subtotal Row
+            sheetRows.push([
+                makeCell("ถูก", styles.sumRedHeader),
+                makeCell("ถูก 3 ตรง", styles.sumRedHeader),
+                makeCell(winAmt3DDirect, styles.sumRedValue),
+                makeCell("ถูก 3 โต๊ด", styles.sumRedHeader),
+                makeCell(winAmt3DTod, styles.sumRedValue),
+                makeCell("ถูก 2 บน", styles.sumRedHeader),
+                makeCell(winAmt2DTop, styles.sumRedValue),
+                makeCell("ถูก 2 ล่าง", styles.sumRedHeader),
+                makeCell(winAmt2DBottom, styles.sumRedValue)
+            ]);
+
+            // Financial Summary Block (Styled like the bottom block in the image)
+            sheetRows.push([
+                makeCell(`ส่วนลด ${discountPct}%`, styles.discountPctBox),
+                makeCell("ยอดซื้อรวมทั้งหมด", styles.summaryLabel),
+                makeCell("", styles.summaryLabel),
+                makeCell(grandTotalBuy, styles.summaryVal),
+                makeCell("ยอดสุทธิหลังหักส่วนลด", styles.creamHighlight),
+                makeCell("", styles.creamHighlight),
+                makeCell(netAfterDiscount, styles.creamHighlight),
+                makeCell("", styles.creamHighlight),
+                makeCell("", styles.creamHighlight)
+            ]);
+
+            sheetRows.push([
+                makeCell("", styles.discountPctBox),
+                makeCell("หักส่วนลด (บาท)", styles.summaryLabel),
+                makeCell("", styles.summaryLabel),
+                makeCell(discountAmount, styles.summaryVal),
+                makeCell("", styles.creamHighlight),
+                makeCell("", styles.creamHighlight),
+                makeCell("", styles.creamHighlight),
+                makeCell("", styles.creamHighlight),
+                makeCell("", styles.creamHighlight)
+            ]);
+
+            sheetRows.push([
+                makeCell("", styles.discountPctBox),
+                makeCell("คงเหลือหลังหักส่วนลด", styles.summaryLabel),
+                makeCell("", styles.summaryLabel),
+                makeCell(netAfterDiscount, styles.summaryVal),
+                makeCell("", styles.creamHighlight),
+                makeCell("", styles.creamHighlight),
+                makeCell("", styles.creamHighlight),
+                makeCell("", styles.creamHighlight),
+                makeCell("", styles.creamHighlight)
+            ]);
+
+            // Total Winnings Row (Green Bar)
+            sheetRows.push([
+                makeCell("ถูกรางวัลรวม", styles.winGreenRow),
+                makeCell("", styles.winGreenRow),
+                makeCell("", styles.winGreenRow),
+                makeCell(totalWinnings, styles.winGreenRow),
+                makeCell("", styles.winGreenRow),
+                makeCell("", styles.winGreenRow),
+                makeCell("", styles.winGreenRow),
+                makeCell("", styles.winGreenRow),
+                makeCell("", styles.winGreenRow)
+            ]);
+
+            // Net Settlement Row (จ่ายเจ้า)
+            sheetRows.push([
+                makeCell("จ่ายเจ้า", styles.summaryLabel),
+                makeCell("", styles.summaryLabel),
+                makeCell("", styles.summaryLabel),
+                makeCell(netSettlement, styles.netSettleBox),
+                makeCell("", styles.netSettleBox),
+                makeCell("", styles.netSettleBox),
+                makeCell("", styles.netSettleBox),
+                makeCell("", styles.netSettleBox),
+                makeCell("", styles.netSettleBox)
+            ]);
+
+            const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+
+            // Configure Merged Cells
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Red Banner Title
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }, // Date
+                { s: { r: 1, c: 3 }, e: { r: 1, c: 5 } }, // Winning 3D
+                { s: { r: 1, c: 6 }, e: { r: 1, c: 8 } }, // Winning 2D
+                { s: { r: 2, c: 1 }, e: { r: 2, c: 2 } }, // 3 ตัวตรง header
+                { s: { r: 2, c: 3 }, e: { r: 2, c: 4 } }, // 3 ตัวโต๊ด header
+                { s: { r: 2, c: 5 }, e: { r: 2, c: 6 } }, // 2 ตัวบน header
+                { s: { r: 2, c: 7 }, e: { r: 2, c: 8 } }, // 2 ตัวล่าง header
+                // Bottom Financial Summary Merges
+                { s: { r: sumStartRowIdx + 2, c: 0 }, e: { r: sumStartRowIdx + 4, c: 0 } }, // Red Discount % box
+                { s: { r: sumStartRowIdx + 2, c: 1 }, e: { r: sumStartRowIdx + 2, c: 2 } },
+                { s: { r: sumStartRowIdx + 3, c: 1 }, e: { r: sumStartRowIdx + 3, c: 2 } },
+                { s: { r: sumStartRowIdx + 4, c: 1 }, e: { r: sumStartRowIdx + 4, c: 2 } },
+                { s: { r: sumStartRowIdx + 2, c: 4 }, e: { r: sumStartRowIdx + 4, c: 5 } }, // Cream label
+                { s: { r: sumStartRowIdx + 2, c: 6 }, e: { r: sumStartRowIdx + 4, c: 8 } }, // Cream big total
+                { s: { r: sumStartRowIdx + 5, c: 0 }, e: { r: sumStartRowIdx + 5, c: 2 } }, // Green win label
+                { s: { r: sumStartRowIdx + 5, c: 3 }, e: { r: sumStartRowIdx + 5, c: 8 } }, // Green win total
+                { s: { r: sumStartRowIdx + 6, c: 0 }, e: { r: sumStartRowIdx + 6, c: 2 } }, // Net settle label
+                { s: { r: sumStartRowIdx + 6, c: 3 }, e: { r: sumStartRowIdx + 6, c: 8 } }  // Net settle total
+            ];
+
+            // Column Widths & Row Heights
+            ws['!cols'] = [
+                { wch: 14 },
+                { wch: 12 }, { wch: 13 },
+                { wch: 12 }, { wch: 13 },
+                { wch: 12 }, { wch: 13 },
+                { wch: 12 }, { wch: 13 }
+            ];
+            ws['!rows'] = [
+                { hpt: 30 }, // Title banner
+                { hpt: 26 }, // Date & Win numbers
+                { hpt: 24 }, // Blue group header
+                { hpt: 22 }  // Subheader
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "บิลสรุปยอดลูกค้า");
+
+            const safeFilename = targetCustomer.replace(/[\\/:*?"<>|]/g, '_');
+            XLSX.writeFile(wb, `บิลหวย_${safeFilename}_${now.getDate()}-${now.getMonth() + 1}-${now.getFullYear() + 543}.xlsx`);
+            showToast(`ส่งออกไฟล์ Excel สีสวยครบทุกเลขของ "${targetCustomer}" เรียบร้อย!`, 'success');
+        }
+
+        // Helper for Dealer Styled Excel Exports
+        function getDealerExcelStyles() {
+            const thinBorder = {
+                top: { style: "thin", color: { rgb: "334155" } },
+                bottom: { style: "thin", color: { rgb: "334155" } },
+                left: { style: "thin", color: { rgb: "334155" } },
+                right: { style: "thin", color: { rgb: "334155" } }
+            };
+
+            return {
+                banner: {
+                    fill: { fgColor: { rgb: "1E1B4B" } },
+                    font: { name: "Tahoma", sz: 14, bold: true, color: { rgb: "FDE047" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                excessBanner: {
+                    fill: { fgColor: { rgb: "991B1B" } },
+                    font: { name: "Tahoma", sz: 14, bold: true, color: { rgb: "FEF08A" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                subBanner: {
+                    fill: { fgColor: { rgb: "F1F5F9" } },
+                    font: { name: "Tahoma", sz: 10, bold: true, color: { rgb: "334155" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                tableHeader: {
+                    fill: { fgColor: { rgb: "1D4ED8" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                excessHeader: {
+                    fill: { fgColor: { rgb: "DC2626" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "FFFFFF" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                type3DDirect: {
+                    fill: { fgColor: { rgb: "DBEAFE" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "1E3A8A" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                type3DTod: {
+                    fill: { fgColor: { rgb: "E0E7FF" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "312E81" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                type2DTop: {
+                    fill: { fgColor: { rgb: "DCFCE7" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "14532D" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                type2DBottom: {
+                    fill: { fgColor: { rgb: "FEF3C7" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "78350F" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                numCell: {
+                    fill: { fgColor: { rgb: "FFFFFF" } },
+                    font: { name: "Tahoma", sz: 12, bold: true, color: { rgb: "0F172A" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                amtCell: {
+                    fill: { fgColor: { rgb: "F8FAFC" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "0F172A" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                overAmtCell: {
+                    fill: { fgColor: { rgb: "FEE2E2" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "B91C1C" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                statusNormal: {
+                    fill: { fgColor: { rgb: "ECFDF5" } },
+                    font: { name: "Tahoma", sz: 10, bold: true, color: { rgb: "047857" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                statusOver: {
+                    fill: { fgColor: { rgb: "DC2626" } },
+                    font: { name: "Tahoma", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                totalFooterLabel: {
+                    fill: { fgColor: { rgb: "FEF08A" } },
+                    font: { name: "Tahoma", sz: 12, bold: true, color: { rgb: "713F12" } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: thinBorder
+                },
+                totalFooterVal: {
+                    fill: { fgColor: { rgb: "FEF08A" } },
+                    font: { name: "Tahoma", sz: 12, bold: true, color: { rgb: "B91C1C" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                },
+                custNameCell: {
+                    fill: { fgColor: { rgb: "EFF6FF" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "1E40AF" } },
+                    alignment: { horizontal: "left", vertical: "center" },
+                    border: thinBorder
+                },
+                custNetCell: {
+                    fill: { fgColor: { rgb: "DCFCE7" } },
+                    font: { name: "Tahoma", sz: 11, bold: true, color: { rgb: "166534" } },
+                    alignment: { horizontal: "right", vertical: "center" },
+                    numFmt: "#,##0",
+                    border: thinBorder
+                }
+            };
+        }
+
+        // Global Dealer Exports (Styled with Colors)
         function exportExcessToExcel() {
+            syncGlobalDictionariesFromLogs();
             const lim2DTop = parseFloat(document.getElementById('limit2DTop').value) || 0;
             const lim2DBottom = parseFloat(document.getElementById('limit2DBottom').value) || 0;
             const lim3DDirect = parseFloat(document.getElementById('limit3DDirect').value) || 0;
@@ -930,87 +2061,265 @@
             let totalExcess = 0;
 
             const processExcess = (typeLabel, dataObj, limit) => {
-                Object.keys(dataObj || {}).forEach(num => {
+                Object.keys(dataObj || {}).sort().forEach(num => {
                     const amount = dataObj[num];
                     if (amount > limit) {
                         const excess = amount - limit;
                         excessRows.push({
-                            "ประเภท": typeLabel,
-                            "หมายเลข": num,
-                            "ยอดส่งออกส่วนเกิน": excess
+                            type: typeLabel,
+                            num: num,
+                            totalBuy: amount,
+                            limit: limit,
+                            excess: excess
                         });
                         totalExcess += excess;
                     }
                 });
             };
 
-            processExcess('2 ตัวบน', data2DTop, lim2DTop);
-            processExcess('2 ตัวล่าง', data2DBottom, lim2DBottom);
             processExcess('3 ตัวตรง', data3DDirect, lim3DDirect);
             processExcess('3 ตัวโต๊ด', data3DTod, lim3DTod);
+            processExcess('2 ตัวบน', data2DTop, lim2DTop);
+            processExcess('2 ตัวล่าง', data2DBottom, lim2DBottom);
 
             if (excessRows.length === 0) {
-                alert('ไม่มียอดที่เกินกำหนดที่ตั้งไว้');
+                showToast('ไม่มียอดที่เกินกำหนดที่ตั้งไว้', 'warning');
                 return;
             }
 
-            const wsData = [
-                ["รายงานยอดส่งออกส่วนเกิน (ตัดยอดอั้นออกแล้ว)"],
-                [`วันที่ออกรายงาน: ${new Date().toLocaleString('th-TH')}`],
-                [],
-                ["ประเภท", "หมายเลข", "ยอดส่งออกส่วนเกิน (บาท)"]
+            const S = getDealerExcelStyles();
+            const cell = (v, s) => ({ v, s, t: typeof v === 'number' ? 'n' : 's' });
+            const getTypeStyle = (t) =>
+                t === '3 ตัวตรง' ? S.type3DDirect :
+                t === '3 ตัวโต๊ด' ? S.type3DTod :
+                t === '2 ตัวบน' ? S.type2DTop : S.type2DBottom;
+
+            const roundTitle = document.getElementById('exportRoundTitle').value.trim() || 'หวยไทย รอบปกติ';
+            const wsRows = [
+                [cell(`รายงานยอดส่งออก หวยไทย`, S.excessBanner), cell("", S.excessBanner), cell("", S.excessBanner), cell("", S.excessBanner)],
+                [cell(`วันที่ออกรายงาน: ${new Date().toLocaleString('th-TH')}`, S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner)],
+                [
+                    cell("ลำดับ", S.excessHeader),
+                    cell("ประเภท", S.excessHeader),
+                    cell("หมายเลข", S.excessHeader),
+                    cell("ยอดส่งออก (บาท)", S.excessHeader)
+                ]
             ];
 
-            excessRows.forEach(r => wsData.push([r["ประเภท"], r["หมายเลข"], r["ยอดส่งออกส่วนเกิน"]]));
-            wsData.push([]);
-            wsData.push(["ยอดรวมทั้งสิ้น", "", totalExcess]);
+            excessRows.forEach((r, idx) => {
+                wsRows.push([
+                    cell(idx + 1, S.numCell),
+                    cell(r.type, getTypeStyle(r.type)),
+                    cell(r.num, S.numCell),
+                    cell(r.excess, S.overAmtCell)
+                ]);
+            });
 
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
-            ws['!cols'] = [{ wch: 18 }, { wch: 14 }, { wch: 25 }];
+            const footerIdx = wsRows.length;
+            wsRows.push([
+                cell("รวมยอดส่งออกทั้งสิ้น", S.totalFooterLabel),
+                cell("", S.totalFooterLabel),
+                cell("", S.totalFooterLabel),
+                cell(totalExcess, S.totalFooterVal)
+            ]);
+
+            const ws = XLSX.utils.aoa_to_sheet(wsRows);
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
+                { s: { r: footerIdx, c: 0 }, e: { r: footerIdx, c: 2 } }
+            ];
+            ws['!cols'] = [{ wch: 10 }, { wch: 16 }, { wch: 14 }, { wch: 24 }];
+            ws['!rows'] = [{ hpt: 28 }, { hpt: 22 }, { hpt: 24 }];
+
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "ยอดส่งออกส่วนเกิน");
-            XLSX.writeFile(wb, `Lottery_Excess_Export_${Date.now()}.xlsx`);
+            XLSX.writeFile(wb, `ยอดส่งออกส่วนเกิน_${Date.now()}.xlsx`);
+            showToast('ส่งออกไฟล์ Excel ยอดส่วนเกินแบบใส่สีเรียบร้อย!', 'success');
         }
 
         function exportAllToExcel() {
+            syncGlobalDictionariesFromLogs();
+            const lim2DTop = parseFloat(document.getElementById('limit2DTop').value) || 0;
+            const lim2DBottom = parseFloat(document.getElementById('limit2DBottom').value) || 0;
+            const lim3DDirect = parseFloat(document.getElementById('limit3DDirect').value) || 0;
+            const lim3DTod = parseFloat(document.getElementById('limit3DTod').value) || 0;
+
             let allRows = [];
-            const collect = (typeLabel, dataObj) => {
-                Object.keys(dataObj || {}).forEach(num => {
+            let grandTotalAll = 0;
+
+            const collect = (typeLabel, dataObj, limit) => {
+                Object.keys(dataObj || {}).sort().forEach(num => {
                     if (dataObj[num] > 0) {
-                        allRows.push({ "ประเภท": typeLabel, "หมายเลข": num, "ยอดรวม": dataObj[num] });
+                        const amt = dataObj[num];
+                        const isOver = limit > 0 && amt > limit;
+                        allRows.push({
+                            type: typeLabel,
+                            num: num,
+                            amount: amt,
+                            limit: limit,
+                            excess: isOver ? (amt - limit) : 0,
+                            isOver: isOver
+                        });
+                        grandTotalAll += amt;
                     }
                 });
             };
 
-            collect('2 ตัวบน', data2DTop);
-            collect('2 ตัวล่าง', data2DBottom);
-            collect('3 ตัวตรง', data3DDirect);
-            collect('3 ตัวโต๊ด', data3DTod);
+            collect('3 ตัวตรง', data3DDirect, lim3DDirect);
+            collect('3 ตัวโต๊ด', data3DTod, lim3DTod);
+            collect('2 ตัวบน', data2DTop, lim2DTop);
+            collect('2 ตัวล่าง', data2DBottom, lim2DBottom);
 
             if (allRows.length === 0) {
-                alert('ยังไม่มีข้อมูลสำหรับส่งออก');
+                showToast('ยังไม่มีข้อมูลสำหรับส่งออก', 'warning');
                 return;
             }
 
-            const ws = XLSX.utils.json_to_sheet(allRows);
+            const S = getDealerExcelStyles();
+            const cell = (v, s) => ({ v, s, t: typeof v === 'number' ? 'n' : 's' });
+            const getTypeStyle = (t) =>
+                t === '3 ตัวตรง' ? S.type3DDirect :
+                t === '3 ตัวโต๊ด' ? S.type3DTod :
+                t === '2 ตัวบน' ? S.type2DTop : S.type2DBottom;
+
+            const roundTitle = document.getElementById('exportRoundTitle').value.trim() || 'หวยไทย รอบปกติ';
+            const dateStr = new Date().toLocaleString('th-TH');
+
+            // SHEET 1: ยอดรวมทุกเลข (ใส่สีแยกประเภท + ไฮไลต์สีแดงตัวที่เกินเพดาน)
+            const ws1Rows = [
+                [cell(`สรุปยอดรวมทุกหมายเลข (ภาพรวมเจ้ามือ) - ${roundTitle}`, S.banner), cell("", S.banner), cell("", S.banner), cell("", S.banner), cell("", S.banner), cell("", S.banner)],
+                [cell(`วันที่ออกรายงาน: ${dateStr}`, S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner)],
+                [
+                    cell("ลำดับ", S.tableHeader),
+                    cell("ประเภท", S.tableHeader),
+                    cell("หมายเลข", S.tableHeader),
+                    cell("ยอดรวม (บาท)", S.tableHeader),
+                    cell("ยอดส่วนเกิน (บาท)", S.tableHeader),
+                    cell("สถานะ", S.tableHeader)
+                ]
+            ];
+
+            allRows.forEach((r, idx) => {
+                ws1Rows.push([
+                    cell(idx + 1, S.numCell),
+                    cell(r.type, getTypeStyle(r.type)),
+                    cell(r.num, S.numCell),
+                    cell(r.amount, r.isOver ? S.overAmtCell : S.amtCell),
+                    cell(r.excess, r.isOver ? S.overAmtCell : S.amtCell),
+                    cell(r.isOver ? "เกินเพดาน" : "ปกติ", r.isOver ? S.statusOver : S.statusNormal)
+                ]);
+            });
+
+            const f1Idx = ws1Rows.length;
+            ws1Rows.push([
+                cell("รวมยอดซื้อทั้งหมด", S.totalFooterLabel),
+                cell("", S.totalFooterLabel),
+                cell("", S.totalFooterLabel),
+                cell(grandTotalAll, S.totalFooterVal),
+                cell(allRows.reduce((s, x) => s + x.excess, 0), S.totalFooterVal),
+                cell("", S.totalFooterLabel)
+            ]);
+
+            const ws1 = XLSX.utils.aoa_to_sheet(ws1Rows);
+            ws1['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
+                { s: { r: f1Idx, c: 0 }, e: { r: f1Idx, c: 2 } }
+            ];
+            ws1['!cols'] = [{ wch: 10 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 15 }];
+            ws1['!rows'] = [{ hpt: 28 }, { hpt: 22 }, { hpt: 24 }];
+
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "ข้อมูลทั้งหมด");
-            XLSX.writeFile(wb, `Lottery_All_Data_${Date.now()}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws1, "ยอดรวมทุกเลข");
+
+            // SHEET 2: สรุปยอดรายลูกค้า (ใส่สีทุกช่อง)
+            const custSummaryMap = {};
+            historyLogs.forEach(item => {
+                const c = item.customer || 'ลูกค้าทั่วไป';
+                if (!custSummaryMap[c]) custSummaryMap[c] = 0;
+                custSummaryMap[c] += item.amount;
+            });
+
+            const custKeys = Object.keys(custSummaryMap);
+            if (custKeys.length > 0) {
+                let sumGross = 0, sumDisc = 0, sumNet = 0;
+                const ws2Rows = [
+                    [cell(`สรุปยอดบิลแยกรายลูกค้า - ${roundTitle}`, S.banner), cell("", S.banner), cell("", S.banner), cell("", S.banner), cell("", S.banner), cell("", S.banner)],
+                    [cell(`วันที่ออกรายงาน: ${dateStr}`, S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner)],
+                    [
+                        cell("ลำดับ", S.tableHeader),
+                        cell("ชื่อลูกค้า", S.tableHeader),
+                        cell("ยอดซื้อรวม (บาท)", S.tableHeader),
+                        cell("ส่วนลด (%)", S.tableHeader),
+                        cell("หักส่วนลด (บาท)", S.tableHeader),
+                        cell("ยอดสุทธิต้องชำระ (บาท)", S.tableHeader)
+                    ]
+                ];
+
+                custKeys.forEach((c, idx) => {
+                    const gross = custSummaryMap[c];
+                    const discPct = customerSettings[c] || 0;
+                    const discAmt = Math.round(gross * (discPct / 100));
+                    const netAmt = gross - discAmt;
+                    sumGross += gross;
+                    sumDisc += discAmt;
+                    sumNet += netAmt;
+
+                    ws2Rows.push([
+                        cell(idx + 1, S.numCell),
+                        cell(c, S.custNameCell),
+                        cell(gross, S.amtCell),
+                        cell(`${discPct}%`, S.numCell),
+                        cell(discAmt, S.overAmtCell),
+                        cell(netAmt, S.custNetCell)
+                    ]);
+                });
+
+                const f2Idx = ws2Rows.length;
+                ws2Rows.push([
+                    cell("รวมทั้งหมดทุกลูกค้า", S.totalFooterLabel),
+                    cell("", S.totalFooterLabel),
+                    cell(sumGross, S.totalFooterVal),
+                    cell("-", S.totalFooterLabel),
+                    cell(sumDisc, S.totalFooterVal),
+                    cell(sumNet, S.totalFooterVal)
+                ]);
+
+                const ws2 = XLSX.utils.aoa_to_sheet(ws2Rows);
+                ws2['!merges'] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+                    { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
+                    { s: { r: f2Idx, c: 0 }, e: { r: f2Idx, c: 1 } }
+                ];
+                ws2['!cols'] = [{ wch: 10 }, { wch: 24 }, { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 22 }];
+                ws2['!rows'] = [{ hpt: 28 }, { hpt: 22 }, { hpt: 24 }];
+                XLSX.utils.book_append_sheet(wb, ws2, "สรุปยอดรายลูกค้า");
+            }
+
+            XLSX.writeFile(wb, `ภาพรวมยอดหวยเจ้ามือ_${Date.now()}.xlsx`);
+            showToast('ส่งออกไฟล์ Excel ภาพรวมเจ้ามือแบบใส่สีครบทุกตารางเรียบร้อย!', 'success');
         }
 
         function clearAllData() {
-            if (confirm('คุณต้องการล้างข้อมูลยอดซื้อทั้งหมดหรือไม่? (ข้อมูลใน Google Sheets จะถูกล้างพร้อมกันทุกเครื่อง)')) {
-                data2DTop = {};
-                data2DBottom = {};
-                data3DDirect = {};
-                data3DTod = {};
-                historyLogs = [];
-                saveToGoogleSheets();
-                renderTables();
-            }
+            showConfirmModal(
+                'คุณต้องการล้างข้อมูลยอดซื้อทั้งหมด (รวมถึงบิลลูกค้าทุกราย) หรือไม่? ข้อมูลใน Google Sheets จะถูกล้างพร้อมกันทุกเครื่อง',
+                () => {
+                    data2DTop = {};
+                    data2DBottom = {};
+                    data3DDirect = {};
+                    data3DTod = {};
+                    historyLogs = [];
+                    selectedCustomerFilter = 'ALL';
+                    updateCustomerDropdowns();
+                    saveToGoogleSheets();
+                    renderTables();
+                    showToast('ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว', 'success');
+                }
+            );
         }
 
-        // ระบบตรวจสอบล็อกอิน
+        // Login System
         function handleLogin(event) {
             event.preventDefault();
             const userInput = document.getElementById('loginUsername').value.trim();
@@ -1021,12 +2330,13 @@
                 sessionStorage.setItem('lottery_logged_in', 'true');
                 document.getElementById('loginModal').classList.add('hidden');
                 fetchFromGoogleSheets();
+                setInterval(fetchFromGoogleSheets, 3000);
             } else {
                 errorMsg.classList.remove('hidden');
             }
         }
 
-        // โหลดข้อมูลเริ่มต้นและตรวจสอบสถานะการล็อกอิน
+        // Initial Load
         window.onload = function() {
             const isLoggedIn = sessionStorage.getItem('lottery_logged_in');
             if (isLoggedIn === 'true') {
@@ -1034,7 +2344,6 @@
                 fetchFromGoogleSheets();
                 setInterval(fetchFromGoogleSheets, 3000);
             } else {
-                // หากยังไม่ล็อกอิน ให้หยุดการดึงข้อมูลอัตโนมัติจนกว่าจะกรอกรหัสผ่านผ่าน
                 document.getElementById('loginModal').classList.remove('hidden');
             }
         };
