@@ -146,36 +146,63 @@
             <div class="lg:col-span-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
                 <div>
                     <h2 class="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                        <i class="fa-solid fa-sliders text-indigo-600"></i> ตั้งค่าเพดานอั้นทั่วไป (เกิน = สีแดง)
+                        <i class="fa-solid fa-sliders text-indigo-600"></i> ตั้งค่าเพดานอั้นทั่วไป & จ่ายครึ่ง
                     </h2>
-                    <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="space-y-3 mb-4">
                         <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวบน (บาท)</label>
-                            <input type="number" id="limit2DTop" value="500" onchange="triggerAutoSave()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">เพดานอั้นปกติ (เกิน = สีแดง)</span>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">2 ตัวบน (บ.)</label>
+                                    <input type="number" id="limit2DTop" value="500" onchange="triggerAutoSave()" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">2 ตัวล่าง (บ.)</label>
+                                    <input type="number" id="limit2DBottom" value="500" onchange="triggerAutoSave()" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">3 ตัวตรง (บ.)</label>
+                                    <input type="number" id="limit3DDirect" value="50" onchange="triggerAutoSave()" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-500 mb-0.5">3 ตัวโต๊ด (บ.)</label>
+                                    <input type="number" id="limit3DTod" value="50" onchange="triggerAutoSave()" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                            </div>
                         </div>
+
                         <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">2 ตัวล่าง (บาท)</label>
-                            <input type="number" id="limit2DBottom" value="500" onchange="triggerAutoSave()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">3 ตัวตรง (บาท)</label>
-                            <input type="number" id="limit3DDirect" value="50" onchange="triggerAutoSave()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">3 ตัวโต๊ด (บาท)</label>
-                            <input type="number" id="limit3DTod" value="50" onchange="triggerAutoSave()" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <span class="text-[11px] font-bold text-amber-600 uppercase tracking-wider block mb-1.5"><i class="fa-solid fa-shield-halved mr-1"></i> เพดานอั้นเลขจ่ายครึ่งราคา (บาท)</span>
+                            <div class="grid grid-cols-2 gap-2 bg-amber-50/50 p-2 rounded-xl border border-amber-200/60">
+                                <div>
+                                    <label class="block text-[10px] text-slate-600 mb-0.5">2 ตัวบน จ่ายครึ่ง</label>
+                                    <input type="number" id="halfLimit2DTop" value="250" onchange="triggerAutoSave()" class="w-full px-2 py-1 border border-amber-300 rounded text-xs font-semibold text-center focus:outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-600 mb-0.5">2 ตัวล่าง จ่ายครึ่ง</label>
+                                    <input type="number" id="halfLimit2DBottom" value="250" onchange="triggerAutoSave()" class="w-full px-2 py-1 border border-amber-300 rounded text-xs font-semibold text-center focus:outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-600 mb-0.5">3 ตัวตรง จ่ายครึ่ง</label>
+                                    <input type="number" id="halfLimit3DDirect" value="25" onchange="triggerAutoSave()" class="w-full px-2 py-1 border border-amber-300 rounded text-xs font-semibold text-center focus:outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-600 mb-0.5">3 ตัวโต๊ด จ่ายครึ่ง</label>
+                                    <input type="number" id="halfLimit3DTod" value="25" onchange="triggerAutoSave()" class="w-full px-2 py-1 border border-amber-300 rounded text-xs font-semibold text-center focus:outline-none bg-white">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Custom Rules Setup -->
                     <div class="border-t border-slate-200 pt-3">
                         <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                            <i class="fa-solid fa-ban text-rose-500"></i> ตั้งค่าเลขอั้นเฉพาะ & เลขจ่ายครึ่ง
+                            <i class="fa-solid fa-percent text-amber-500"></i> ตั้งค่าเลขจ่ายครึ่งราคา
                         </h3>
                         <div class="space-y-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
                             <div class="grid grid-cols-12 gap-1.5">
-                                <input type="text" id="ruleNum" placeholder="เลข (เช่น 89)" class="col-span-3 px-2 py-1.5 border border-slate-300 rounded font-bold text-center focus:outline-none">
-                                <select id="ruleType" class="col-span-5 px-1 py-1.5 border border-slate-300 rounded focus:outline-none">
+                                <input type="text" id="ruleNum" placeholder="เลข (เช่น 89 หรือ 123)" class="col-span-4 px-2 py-1.5 border border-slate-300 rounded font-bold text-center focus:outline-none">
+                                <select id="ruleType" class="col-span-8 px-1.5 py-1.5 border border-slate-300 rounded focus:outline-none">
                                     <option value="2DBoth">2 ตัว (บน + ล่าง)</option>
                                     <option value="2DTop">2 บน</option>
                                     <option value="2DBottom">2 ล่าง</option>
@@ -183,25 +210,30 @@
                                     <option value="3DDirect">3 ตรง</option>
                                     <option value="3DTod">3 โต๊ด</option>
                                 </select>
-                                <select id="ruleStatus" onchange="toggleRuleMaxInput()" class="col-span-4 px-1 py-1.5 border border-slate-300 rounded font-semibold text-rose-600 focus:outline-none">
-                                    <option value="BLOCKED">เลขอั้น (ห้ามเกิน)</option>
-                                    <option value="HALF">จ่ายครึ่งราคา</option>
-                                </select>
                             </div>
                             
-                            <div class="flex items-center justify-between gap-2 pt-1">
-                                <label class="inline-flex items-center cursor-pointer text-xs font-bold text-indigo-800">
-                                    <input type="checkbox" id="ruleIncludeReverse" class="w-3.5 h-3.5 text-indigo-600 rounded border-slate-300 mr-1.5">
-                                    <i class="fa-solid fa-right-left text-indigo-600 mr-1"></i> รวมตัวกลับด้วย
-                                </label>
-                                <div id="ruleMaxContainer" class="flex items-center gap-1.5">
-                                    <span class="text-slate-500 text-[11px]">เพดาน (บาท):</span>
-                                    <input type="number" id="ruleMax" placeholder="0 = ปิดรับเลย" value="0" class="w-24 px-2 py-1 border border-slate-300 rounded font-bold text-rose-700 focus:outline-none">
+                            <div class="flex flex-col gap-1.5 pt-1">
+                                <span class="text-[11px] font-bold text-slate-700">รูปแบบการกลับเลข:</span>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <label class="inline-flex items-center cursor-pointer text-[11px] font-bold text-indigo-800 bg-white p-1 rounded border border-slate-200">
+                                        <input type="radio" name="rulePermMode" value="none" checked class="w-3 h-3 text-indigo-600 mr-1"> เฉพาะเลขนี้
+                                    </label>
+                                    <label class="inline-flex items-center cursor-pointer text-[11px] font-bold text-indigo-800 bg-white p-1 rounded border border-slate-200" title="เพิ่ม 2 ตัวกลับ (เช่น 12 -> 12, 21)">
+                                        <input type="radio" name="rulePermMode" value="rev2" class="w-3 h-3 text-indigo-600 mr-1"> 2 ตัวกลับ
+                                    </label>
+                                    <label class="inline-flex items-center cursor-pointer text-[11px] font-bold text-indigo-800 bg-white p-1 rounded border border-slate-200" title="เพิ่ม 3 ตัวกลับ 3 ประตู (เช่น 112 -> 112, 121, 211)">
+                                        <input type="radio" name="rulePermMode" value="rev3" class="w-3 h-3 text-indigo-600 mr-1"> 3 ตัวกลับ
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-1 mt-0.5">
+                                    <label class="inline-flex items-center cursor-pointer text-[11px] font-bold text-indigo-800 bg-white p-1.5 rounded border border-slate-200" title="เพิ่ม 6 กลับ (เช่น 123 -> 6 ประตู)">
+                                        <input type="radio" name="rulePermMode" value="perm6" class="w-3 h-3 text-indigo-600 mr-1"> 6 กลับ (กระจาย 6 ประตู)
+                                    </label>
                                 </div>
                             </div>
 
                             <button onclick="addSpecialRule()" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-1.5 rounded font-medium transition flex items-center justify-center gap-1 mt-1">
-                                <i class="fa-solid fa-plus text-xs"></i> เพิ่มกฎเลขนี้
+                                <i class="fa-solid fa-plus text-xs"></i> เพิ่มกฎจ่ายครึ่งเลขนี้
                             </button>
                         </div>
 
@@ -302,12 +334,18 @@
                             <div>
                                 <div class="flex justify-between items-center mb-1">
                                     <label class="block text-xs font-medium text-slate-600">หมายเลข 3 ตัว</label>
-                                    <label class="inline-flex items-center cursor-pointer text-xs font-bold text-amber-800 hover:text-amber-900">
-                                        <input type="checkbox" id="input6Permutations" class="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 mr-1.5">
-                                        <i class="fa-solid fa-arrows-rotate text-amber-600 mr-1"></i> 6 กลับ
-                                    </label>
+                                    <div class="flex items-center gap-3">
+                                        <label title="กระจายเลขหาม/เบิ้ล 3 ประตู เช่น 112 -> 112, 121, 211" class="inline-flex items-center cursor-pointer text-xs font-bold text-amber-800 hover:text-amber-900">
+                                            <input type="checkbox" id="input3DReverse" onchange="toggle3DPermMode('reverse')" class="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 mr-1">
+                                            <i class="fa-solid fa-right-left text-amber-600 mr-1"></i> 3 ตัวกลับ
+                                        </label>
+                                        <label title="กระจายเลขไม่ซ้ำ 6 ประตู เช่น 123 -> 123, 132, 213, 231, 312, 321" class="inline-flex items-center cursor-pointer text-xs font-bold text-amber-800 hover:text-amber-900">
+                                            <input type="checkbox" id="input6Permutations" onchange="toggle3DPermMode('perm6')" class="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500 mr-1">
+                                            <i class="fa-solid fa-arrows-rotate text-amber-600 mr-1"></i> 6 กลับ
+                                        </label>
+                                    </div>
                                 </div>
-                                <input type="text" id="inputNum3D" maxlength="3" pattern="\d{3}" required placeholder="เช่น 123" onkeydown="handleEnterKey(event, 'inputPrice3DDirect')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-lg font-bold text-center text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
+                                <input type="text" id="inputNum3D" maxlength="3" pattern="\d{3}" required placeholder="เช่น 123 หรือ 112" onkeydown="handleEnterKey(event, 'inputPrice3DDirect')" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-lg font-bold text-center text-amber-900 focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white">
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
@@ -872,7 +910,6 @@
                     historyLogs = json.historyLogs || [];
                     customerSettings = json.customerSettings || {};
 
-                    // Support legacy logs without customer/billNo or without historyLogs
                     if (historyLogs.length === 0 && (json.data2DTop || json.data2DBottom || json.data3DDirect || json.data3DTod)) {
                         data2DTop = json.data2DTop || {};
                         data2DBottom = json.data2DBottom || {};
@@ -887,6 +924,10 @@
                         if (document.activeElement.id !== 'limit2DBottom') document.getElementById('limit2DBottom').value = json.limits.l2DBottom || 500;
                         if (document.activeElement.id !== 'limit3DDirect') document.getElementById('limit3DDirect').value = json.limits.l3DDirect || 50;
                         if (document.activeElement.id !== 'limit3DTod') document.getElementById('limit3DTod').value = json.limits.l3DTod || 50;
+                        if (document.activeElement.id !== 'halfLimit2DTop') document.getElementById('halfLimit2DTop').value = json.limits.h2DTop !== undefined ? json.limits.h2DTop : 250;
+                        if (document.activeElement.id !== 'halfLimit2DBottom') document.getElementById('halfLimit2DBottom').value = json.limits.h2DBottom !== undefined ? json.limits.h2DBottom : 250;
+                        if (document.activeElement.id !== 'halfLimit3DDirect') document.getElementById('halfLimit3DDirect').value = json.limits.h3DDirect !== undefined ? json.limits.h3DDirect : 25;
+                        if (document.activeElement.id !== 'halfLimit3DTod') document.getElementById('halfLimit3DTod').value = json.limits.h3DTod !== undefined ? json.limits.h3DTod : 25;
                     }
 
                     updateCustomerDropdowns();
@@ -917,7 +958,11 @@
                     l2DTop: parseFloat(document.getElementById('limit2DTop').value) || 500,
                     l2DBottom: parseFloat(document.getElementById('limit2DBottom').value) || 500,
                     l3DDirect: parseFloat(document.getElementById('limit3DDirect').value) || 50,
-                    l3DTod: parseFloat(document.getElementById('limit3DTod').value) || 50
+                    l3DTod: parseFloat(document.getElementById('limit3DTod').value) || 50,
+                    h2DTop: parseFloat(document.getElementById('halfLimit2DTop').value) || 250,
+                    h2DBottom: parseFloat(document.getElementById('halfLimit2DBottom').value) || 250,
+                    h3DDirect: parseFloat(document.getElementById('halfLimit3DDirect').value) || 25,
+                    h3DTod: parseFloat(document.getElementById('halfLimit3DTod').value) || 25
                 }
             };
 
@@ -971,19 +1016,10 @@
         }
 
         // Special Rules Logic
-        function toggleRuleMaxInput() {
-            const status = document.getElementById('ruleStatus').value;
-            const container = document.getElementById('ruleMaxContainer');
-            if (status === 'BLOCKED') container.classList.remove('hidden');
-            else container.classList.add('hidden');
-        }
-
         function addSpecialRule() {
             const num = document.getElementById('ruleNum').value.trim();
             const type = document.getElementById('ruleType').value;
-            const status = document.getElementById('ruleStatus').value;
-            const maxVal = parseFloat(document.getElementById('ruleMax').value) || 0;
-            const includeReverse = document.getElementById('ruleIncludeReverse').checked;
+            const permMode = document.querySelector('input[name="rulePermMode"]:checked').value;
 
             if (!num) {
                 showToast('กรุณาระบุหมายเลข', 'warning');
@@ -991,25 +1027,29 @@
             }
 
             let numsToAdd = [num];
-            if (includeReverse && num.length === 2) {
+            if (permMode === 'rev2' && num.length === 2) {
                 const rev = num.split('').reverse().join('');
                 if (rev !== num) numsToAdd.push(rev);
+            } else if (permMode === 'rev3' && num.length === 3) {
+                numsToAdd = get3DReverseSet(num);
+            } else if (permMode === 'perm6' && num.length === 3) {
+                numsToAdd = getPermutations(num);
             }
 
             numsToAdd.forEach(n => {
                 const existingIndex = specialRules.findIndex(r => r.number === n && r.type === type);
-                const newRule = { id: Date.now() + Math.random(), number: n, type: type, status: status, maxAmount: maxVal };
+                const newRule = { id: Date.now() + Math.random(), number: n, type: type, status: 'HALF', maxAmount: 0 };
                 if (existingIndex >= 0) specialRules[existingIndex] = newRule;
                 else specialRules.push(newRule);
             });
 
             document.getElementById('ruleNum').value = '';
-            document.getElementById('ruleIncludeReverse').checked = false;
+            document.querySelector('input[name="rulePermMode"][value="none"]').checked = true;
             
             saveToGoogleSheets();
             renderRulesList();
             renderTables();
-            showToast('เพิ่มกฎเลขอั้น/จ่ายครึ่งเรียบร้อย', 'success');
+            showToast('เพิ่มกฎจ่ายครึ่งราคาเรียบร้อย', 'success');
         }
 
         function deleteSpecialRule(id) {
@@ -1023,7 +1063,7 @@
             const list = document.getElementById('rulesList');
             if (!list) return;
             if (specialRules.length === 0) {
-                list.innerHTML = `<p class="text-[11px] text-slate-400 text-center py-1">ยังไม่มีการตั้งค่าเลขอั้น/จ่ายครึ่ง</p>`;
+                list.innerHTML = `<p class="text-[11px] text-slate-400 text-center py-1">ยังไม่มีการตั้งค่าจ่ายครึ่ง</p>`;
                 return;
             }
 
@@ -1037,33 +1077,13 @@
                     <div class="flex items-center gap-1.5">
                         <span class="font-bold text-slate-800">${r.number}</span>
                         <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">${typeLabels[r.type] || r.type}</span>
-                        <span class="text-[10px] font-bold ${r.status === 'BLOCKED' ? 'text-red-600' : 'text-amber-600'}">
-                            ${r.status === 'BLOCKED' ? `อั้น (${r.maxAmount > 0 ? r.maxAmount + '฿' : 'ปิดรับ'})` : 'จ่ายครึ่ง'}
-                        </span>
+                        <span class="text-[10px] font-bold text-amber-600">จ่ายครึ่งราคา</span>
                     </div>
                     <button onclick="deleteSpecialRule(${r.id})" class="text-slate-400 hover:text-red-600 text-xs">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
             `).join('');
-        }
-
-        function checkRuleViolation(num, typeCategory, currentAmount, addedAmount) {
-            const newTotal = currentAmount + addedAmount;
-            const applicableRules = specialRules.filter(r => {
-                if (r.number !== num) return false;
-                if (r.type === typeCategory) return true;
-                if (r.type === '2DBoth' && (typeCategory === '2DTop' || typeCategory === '2DBottom')) return true;
-                if (r.type === '3DBoth' && (typeCategory === '3DDirect' || typeCategory === '3DTod')) return true;
-                return false;
-            });
-
-            for (const r of applicableRules) {
-                if (r.status === 'BLOCKED') {
-                    if (newTotal > r.maxAmount) return { blocked: true, rule: r };
-                }
-            }
-            return { blocked: false };
         }
 
         function getRuleStatusTag(num, typeCategory) {
@@ -1075,7 +1095,6 @@
                 return false;
             });
 
-            if (applicableRules.some(r => r.status === 'BLOCKED')) return 'BLOCKED';
             if (applicableRules.some(r => r.status === 'HALF')) return 'HALF';
             return 'NORMAL';
         }
@@ -1109,23 +1128,6 @@
             }
 
             syncGlobalDictionariesFromLogs();
-
-            for (const n of numsToProcess) {
-                if (topPrice > 0) {
-                    const check = checkRuleViolation(n, '2DTop', data2DTop[n] || 0, topPrice);
-                    if (check.blocked) {
-                        showToast(`บันทึกไม่ได้! เลข ${n} (2 ตัวบน) อั้นเกินเพดาน (${check.rule.maxAmount} บาท)`, 'error');
-                        return;
-                    }
-                }
-                if (bottomPrice > 0) {
-                    const check = checkRuleViolation(n, '2DBottom', data2DBottom[n] || 0, bottomPrice);
-                    if (check.blocked) {
-                        showToast(`บันทึกไม่ได้! เลข ${n} (2 ตัวล่าง) อั้นเกินเพดาน (${check.rule.maxAmount} บาท)`, 'error');
-                        return;
-                    }
-                }
-            }
 
             numsToProcess.forEach(n => {
                 if (topPrice > 0) {
@@ -1161,11 +1163,28 @@
             return [...new Set(permutations)];
         }
 
+        // สร้างชุดเลข 3 ตัวกลับ (3 ประตู) เช่น 112 -> [112, 121, 211]
+        function get3DReverseSet(str) {
+            const perms = getPermutations(str);
+            return perms.slice(0, 3);
+        }
+
+        function toggle3DPermMode(mode) {
+            const revCheckbox = document.getElementById('input3DReverse');
+            const perm6Checkbox = document.getElementById('input6Permutations');
+            if (mode === 'reverse' && revCheckbox.checked) {
+                perm6Checkbox.checked = false;
+            } else if (mode === 'perm6' && perm6Checkbox.checked) {
+                revCheckbox.checked = false;
+            }
+        }
+
         function handleFormSubmit3D(event) {
             event.preventDefault();
             const numInput = document.getElementById('inputNum3D');
             const directPriceInput = document.getElementById('inputPrice3DDirect');
             const todPriceInput = document.getElementById('inputPrice3DTod');
+            const is3DReverse = document.getElementById('input3DReverse').checked;
             const is6Perm = document.getElementById('input6Permutations').checked;
 
             const customerName = document.getElementById('inputCustomerName').value.trim() || 'ลูกค้าทั่วไป';
@@ -1181,25 +1200,13 @@
                 return;
             }
 
-            let numsToProcess = is6Perm ? getPermutations(num) : [num];
-            syncGlobalDictionariesFromLogs();
-
-            for (const n of numsToProcess) {
-                if (directPrice > 0) {
-                    const check = checkRuleViolation(n, '3DDirect', data3DDirect[n] || 0, directPrice);
-                    if (check.blocked) {
-                        showToast(`บันทึกไม่ได้! เลข ${n} (3 ตรง) อั้นเกินเพดาน (${check.rule.maxAmount} บาท)`, 'error');
-                        return;
-                    }
-                }
-                if (todPrice > 0) {
-                    const check = checkRuleViolation(n, '3DTod', data3DTod[n] || 0, todPrice);
-                    if (check.blocked) {
-                        showToast(`บันทึกไม่ได้! เลข ${n} (3 โต๊ด) อั้นเกินเพดาน (${check.rule.maxAmount} บาท)`, 'error');
-                        return;
-                    }
-                }
+            let numsToProcess = [num];
+            if (is6Perm) {
+                numsToProcess = getPermutations(num);
+            } else if (is3DReverse && num.length === 3) {
+                numsToProcess = get3DReverseSet(num);
             }
+            syncGlobalDictionariesFromLogs();
 
             numsToProcess.forEach(n => {
                 if (directPrice > 0) {
@@ -1213,6 +1220,7 @@
             numInput.value = '';
             directPriceInput.value = '';
             todPriceInput.value = '';
+            document.getElementById('input3DReverse').checked = false;
             document.getElementById('input6Permutations').checked = false;
             numInput.focus();
 
@@ -1246,17 +1254,18 @@
         function renderTables() {
             const { agg2DTop, agg2DBottom, agg3DDirect, agg3DTod } = getAggregatedData(selectedCustomerFilter);
 
-            render2DGrid('Top', agg2DTop, 'limit2DTop');
-            render2DGrid('Bottom', agg2DBottom, 'limit2DBottom');
+            render2DGrid('Top', agg2DTop, 'limit2DTop', 'halfLimit2DTop');
+            render2DGrid('Bottom', agg2DBottom, 'limit2DBottom', 'halfLimit2DBottom');
             render3DTable('Direct', agg3DDirect);
             render3DTable('Tod', agg3DTod);
             renderHistoryTable();
             updateSummaries(agg2DTop, agg2DBottom, agg3DDirect, agg3DTod);
         }
 
-        function render2DGrid(type, dataObj, limitInputId) {
+        function render2DGrid(type, dataObj, limitInputId, halfLimitInputId) {
             const grid = document.getElementById(`grid2D${type}`);
             const limit = parseFloat(document.getElementById(limitInputId).value) || 0;
+            const halfLimit = parseFloat(document.getElementById(halfLimitInputId)?.value) || 0;
             const textElem = document.getElementById(`${limitInputId}Text`);
             if (textElem) textElem.innerText = limit;
             
@@ -1266,7 +1275,11 @@
             for (let i = 0; i < 100; i++) {
                 const numStr = i.toString().padStart(2, '0');
                 const amount = (dataObj && dataObj[numStr]) ? dataObj[numStr] : 0;
-                const isOver = amount > limit && limit > 0;
+                
+                // Check if this specific number is half-pay status
+                const isHalf = getRuleStatusTag(numStr, type === 'Top' ? '2DTop' : '2DBottom') === 'HALF';
+                const activeLimit = isHalf ? halfLimit : limit;
+                const isOver = amount > activeLimit && activeLimit > 0;
 
                 const cell = document.createElement('div');
                 cell.className = `p-1.5 rounded-lg border text-center transition flex flex-col justify-between h-14 ${
@@ -1278,7 +1291,7 @@
                 }`;
 
                 cell.innerHTML = `
-                    <span class="text-xs ${isOver ? 'text-white' : 'text-slate-500'} font-bold">${numStr}</span>
+                    <span class="text-xs ${isOver ? 'text-white' : 'text-slate-500'} font-bold">${numStr} ${isHalf ? '<i class="fa-solid fa-percent text-[9px] text-amber-300" title="จ่ายครึ่ง"></i>' : ''}</span>
                     <span class="text-[11px] truncate">${amount > 0 ? amount.toLocaleString() : '-'}</span>
                 `;
                 grid.appendChild(cell);
@@ -1289,7 +1302,9 @@
             const { agg3DDirect, agg3DTod } = getAggregatedData(selectedCustomerFilter);
             const dataObj = customDataObj || (type === 'Direct' ? agg3DDirect : agg3DTod);
             const limitInput = document.getElementById(`limit3D${type}`);
+            const halfLimitInput = document.getElementById(`halfLimit3D${type}`);
             const limit = limitInput ? (parseFloat(limitInput.value) || 0) : 0;
+            const halfLimit = halfLimitInput ? (parseFloat(halfLimitInput.value) || 0) : 0;
             const searchVal = (document.getElementById(`search3D${type}`)?.value || '').trim();
             const tbody = document.getElementById(`body3D${type}`);
             const textElem = document.getElementById(`limit3D${type}Text`);
@@ -1306,12 +1321,19 @@
                 return;
             }
 
+            const typeCat = type === 'Direct' ? '3DDirect' : '3DTod';
+
             tbody.innerHTML = keys.map(num => {
                 const amount = dataObj[num];
-                const isOver = amount > limit && limit > 0;
+                const isHalf = getRuleStatusTag(num, typeCat) === 'HALF';
+                const activeLimit = isHalf ? halfLimit : limit;
+                const isOver = amount > activeLimit && activeLimit > 0;
+
                 return `
                     <tr class="${isOver ? 'bg-red-50 text-red-900 font-bold' : 'hover:bg-slate-50'}">
-                        <td class="py-2 px-4 font-mono font-bold text-base">${num}</td>
+                        <td class="py-2 px-4 font-mono font-bold text-base">
+                            ${num} ${isHalf ? '<span class="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded ml-1">จ่ายครึ่ง</span>' : ''}
+                        </td>
                         <td class="py-2 px-4 text-right font-semibold">${amount.toLocaleString()} ฿</td>
                         <td class="py-2 px-4 text-center">
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isOver ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600'}">
@@ -1368,11 +1390,10 @@
                     <td class="py-2 px-3 text-right font-semibold text-slate-800">${item.amount.toLocaleString()} ฿</td>
                     <td class="py-2 px-3 text-center">
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            item.statusTag === 'BLOCKED' ? 'bg-red-100 text-red-700 border border-red-200' :
                             item.statusTag === 'HALF' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
                             'bg-emerald-100 text-emerald-700'
                         }">
-                            ${item.statusTag === 'BLOCKED' ? 'เลขอั้น' : item.statusTag === 'HALF' ? 'จ่ายครึ่งราคา' : 'จ่ายปกติ'}
+                            ${item.statusTag === 'HALF' ? 'จ่ายครึ่งราคา' : 'จ่ายปกติ'}
                         </span>
                     </td>
                     <td class="py-2 px-3 text-center whitespace-nowrap">
@@ -2056,20 +2077,27 @@
             const lim2DBottom = parseFloat(document.getElementById('limit2DBottom').value) || 0;
             const lim3DDirect = parseFloat(document.getElementById('limit3DDirect').value) || 0;
             const lim3DTod = parseFloat(document.getElementById('limit3DTod').value) || 0;
+            const halfLim2DTop = parseFloat(document.getElementById('halfLimit2DTop').value) || 0;
+            const halfLim2DBottom = parseFloat(document.getElementById('halfLimit2DBottom').value) || 0;
+            const halfLim3DDirect = parseFloat(document.getElementById('halfLimit3DDirect').value) || 0;
+            const halfLim3DTod = parseFloat(document.getElementById('halfLimit3DTod').value) || 0;
 
             let excessRows = [];
             let totalExcess = 0;
 
-            const processExcess = (typeLabel, dataObj, limit) => {
+            const processExcess = (typeLabel, dataObj, limit, halfLimit, typeCat) => {
                 Object.keys(dataObj || {}).sort().forEach(num => {
                     const amount = dataObj[num];
-                    if (amount > limit) {
-                        const excess = amount - limit;
+                    const isHalf = getRuleStatusTag(num, typeCat) === 'HALF';
+                    const activeLimit = isHalf ? halfLimit : limit;
+
+                    if (amount > activeLimit && activeLimit > 0) {
+                        const excess = amount - activeLimit;
                         excessRows.push({
                             type: typeLabel,
                             num: num,
                             totalBuy: amount,
-                            limit: limit,
+                            limit: activeLimit,
                             excess: excess
                         });
                         totalExcess += excess;
@@ -2077,10 +2105,10 @@
                 });
             };
 
-            processExcess('3 ตัวตรง', data3DDirect, lim3DDirect);
-            processExcess('3 ตัวโต๊ด', data3DTod, lim3DTod);
-            processExcess('2 ตัวบน', data2DTop, lim2DTop);
-            processExcess('2 ตัวล่าง', data2DBottom, lim2DBottom);
+            processExcess('3 ตัวตรง', data3DDirect, lim3DDirect, halfLim3DDirect, '3DDirect');
+            processExcess('3 ตัวโต๊ด', data3DTod, lim3DTod, halfLim3DTod, '3DTod');
+            processExcess('2 ตัวบน', data2DTop, lim2DTop, halfLim2DTop, '2DTop');
+            processExcess('2 ตัวล่าง', data2DBottom, lim2DBottom, halfLim2DBottom, '2DBottom');
 
             if (excessRows.length === 0) {
                 showToast('ไม่มียอดที่เกินกำหนดที่ตั้งไว้', 'warning');
@@ -2144,21 +2172,28 @@
             const lim2DBottom = parseFloat(document.getElementById('limit2DBottom').value) || 0;
             const lim3DDirect = parseFloat(document.getElementById('limit3DDirect').value) || 0;
             const lim3DTod = parseFloat(document.getElementById('limit3DTod').value) || 0;
+            const halfLim2DTop = parseFloat(document.getElementById('halfLimit2DTop').value) || 0;
+            const halfLim2DBottom = parseFloat(document.getElementById('halfLimit2DBottom').value) || 0;
+            const halfLim3DDirect = parseFloat(document.getElementById('halfLimit3DDirect').value) || 0;
+            const halfLim3DTod = parseFloat(document.getElementById('halfLimit3DTod').value) || 0;
 
             let allRows = [];
             let grandTotalAll = 0;
 
-            const collect = (typeLabel, dataObj, limit) => {
+            const collect = (typeLabel, dataObj, limit, halfLimit, typeCat) => {
                 Object.keys(dataObj || {}).sort().forEach(num => {
                     if (dataObj[num] > 0) {
                         const amt = dataObj[num];
-                        const isOver = limit > 0 && amt > limit;
+                        const isHalf = getRuleStatusTag(num, typeCat) === 'HALF';
+                        const activeLimit = isHalf ? halfLimit : limit;
+                        const isOver = activeLimit > 0 && amt > activeLimit;
+
                         allRows.push({
                             type: typeLabel,
                             num: num,
                             amount: amt,
-                            limit: limit,
-                            excess: isOver ? (amt - limit) : 0,
+                            limit: activeLimit,
+                            excess: isOver ? (amt - activeLimit) : 0,
                             isOver: isOver
                         });
                         grandTotalAll += amt;
@@ -2166,10 +2201,10 @@
                 });
             };
 
-            collect('3 ตัวตรง', data3DDirect, lim3DDirect);
-            collect('3 ตัวโต๊ด', data3DTod, lim3DTod);
-            collect('2 ตัวบน', data2DTop, lim2DTop);
-            collect('2 ตัวล่าง', data2DBottom, lim2DBottom);
+            collect('3 ตัวตรง', data3DDirect, lim3DDirect, halfLim3DDirect, '3DDirect');
+            collect('3 ตัวโต๊ด', data3DTod, lim3DTod, halfLim3DTod, '3DTod');
+            collect('2 ตัวบน', data2DTop, lim2DTop, halfLim2DTop, '2DTop');
+            collect('2 ตัวล่าง', data2DBottom, lim2DBottom, halfLim2DBottom, '2DBottom');
 
             if (allRows.length === 0) {
                 showToast('ยังไม่มีข้อมูลสำหรับส่งออก', 'warning');
@@ -2186,7 +2221,6 @@
             const roundTitle = document.getElementById('exportRoundTitle').value.trim() || 'หวยไทย รอบปกติ';
             const dateStr = new Date().toLocaleString('th-TH');
 
-            // SHEET 1: ยอดรวมทุกเลข (ใส่สีแยกประเภท + ไฮไลต์สีแดงตัวที่เกินเพดาน)
             const ws1Rows = [
                 [cell(`สรุปยอดรวมทุกหมายเลข (ภาพรวมเจ้ามือ) - ${roundTitle}`, S.banner), cell("", S.banner), cell("", S.banner), cell("", S.banner), cell("", S.banner), cell("", S.banner)],
                 [cell(`วันที่ออกรายงาน: ${dateStr}`, S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner), cell("", S.subBanner)],
@@ -2233,7 +2267,6 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws1, "ยอดรวมทุกเลข");
 
-            // SHEET 2: สรุปยอดรายลูกค้า (ใส่สีทุกช่อง)
             const custSummaryMap = {};
             historyLogs.forEach(item => {
                 const c = item.customer || 'ลูกค้าทั่วไป';
